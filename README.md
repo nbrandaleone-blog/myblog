@@ -1,3 +1,7 @@
+#
+# Jekyll theme. https://github.com/yous/whiteglass
+#
+
 1) To run local web server:
 	bundle exec jekyll serve
 2) To build the website
