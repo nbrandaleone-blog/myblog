@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Welcome to my Awesome Blog!"
-date:   2018-01-14 12:09:01 -0500
+date:   2018-01-14 12:09:00 -0500
 categories: blog
 ---
 Hi! Welcome to yet another blog.  Unless you are very lucky to stumble across this site, I will assume that you are lost.  Otherwise, this blog will be a place where I store code snippets, math facts, chess games and other mental dandruff. It is my hope that it will be useful to myself and perhaps others.
