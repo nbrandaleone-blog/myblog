@@ -4,6 +4,17 @@ title:  "EKS and Horizontal Pod Autoscaler"
 date:   2018-07-03 09:00:00 -0400
 categories: aws
 ---
+<details>
+<summary><strong>HPA is now working with EKS!</strong></summary>
+On August 31, 2018 - according to this <a href="https://aws.amazon.com/blogs/opensource/horizontal-pod-autoscaling-eks/">blog</a> HPA is now working with EKS. I have tested it, and it is indeed true.  However, you must manually install the metrics-server, which is a bit of a bummer.  However, just follow these <a href="https://github.com/kubernetes-incubator/metrics-server">instructions</a>, and you will be able to auto-scale with the best of them.  
+
+Follow the <a href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/">kubernetes tutorial</a> to test out HPA.
+
+<img src="/images/hpa-diagram-2.jpg" alt="diagram">
+
+Go AWS!
+</details>
+
 ![Horizontal Pod Autoscaler](/images/autoscaler_kubernetes.jpg)
 The Horizontal Pod Autoscaler automatically scales the number of pods in a deployment or replica set. HPA typically works off of CPU utilization, but it is now possible to utilize custom metrics for scaling.
 
