@@ -1,10 +1,18 @@
 ---
 layout: post
 title:  "Interacting with EKS via Lambda"
-date:   2018-08-26 09:00:00 -0400
+date:   2018-09-03 09:00:00 -0400
 categories: aws
 ---
 ![EKS authentications](/images/authenticator.png)
+
+<details>
+<summary><strong>Blog and Code update</strong></summary>
+<p>
+Due to feedback from colleagues (thank you Chris Hein and Paul Maddox!) I have significantly cleaned up the code needed to interact with EKS using the kubernetes go client. This blog post has been edited since it was originally released on August 26, 2018.
+</p>
+<hr>
+</details>
 
 One typically interacts with a Kubernetes cluster through _kubectl_. However, that only really works for interactive commands. When you want to automate something, you need to script it. Fortunately, there are several excellent kubernetes client [libraries](https://kubernetes.io/docs/reference/using-api/client-libraries/). The officially supported one is written in [Go](https://github.com/kubernetes/client-go/), simply because kubernetes is written in Go.
 
@@ -84,77 +92,10 @@ Pod example-xxxxx in namespace default not found
 
 ## Creating a Lambda function
 In order to run a Lambda function that can interact with our cluster, there is some preparation work required:
-1. Download the binary authenticator plugin, so the go client can call it as part of the authentication process
-2. Create a local _kubectl_ configuration file referencing the plugin, and the appropriate role
-3. Ensure the lambda function has appropriate access to assume the K8 authentication role
-
-### Download the authenticator
-Once the lambda function starts, I download a local copy of the authenticator program into "/tmp".
-This allows for the go client to execute the binary, and generate the proper authentication token.
-
-```go
-func getAuthenticator() {
-// This function gets the "aws-iam-authenticator" binary, and installs it in /tmp.
-
-  const authURL = "https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator"
-  var netClient = &http.Client{
-    Timeout: time.Second * 10,
-  }  
-
-  resp, err := netClient.Get(authURL)
-  check(err)
-
-  defer resp.Body.Close()
-  body, err := ioutil.ReadAll(resp.Body)
-  check(err)
-
-  // write binary to /tmp
-  err = ioutil.WriteFile("/tmp/aws-iam-authenticator", body, 0755)
-  check(err)
-}
-```
-
-### Create a _kubectl_ configuration file
-In order to create a _kubectl_ configuration file, I leverage Go templates, which allow for easy substitution of values.
-Although this file could be hard-coded, by using a template I increase the flexibility of this function by allowing it to be reused for other clusters.
-
-**NOTE:** The below template should have a second pair of braces around each variable. I dropped the second pair for increased visibility, as the blog was munging them.
-
-```go
-func buildConfig(){
-// This function creates a KUBECONFIG file, using a template structure.
-
-  t := template.New("KUBECONFIG")
-  text := `
-apiVersion: v1
-clusters:
-- cluster:
-    server: {.Server}
-    certificate-authority-data: {.CertificateAuthority}
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: aws
-  name: aws
-current-context: aws
-kind: Config
-preferences: {}
-users:
-- name: aws
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1alpha1
-      command: /tmp/aws-iam-authenticator
-      args:
-        - "token"
-        - "-i"
-        - "{.Name}"
-        - "-r"
-        - "{.Role}"
-`
-// function continues ...
-```
+1. Pass the appropriate EKS cluster name, AWS region and IAM authentication role required for EKS access via environmental variables into the lambda function 
+2. Import the [heptio](https://github.com/kubernetes-sigs/aws-iam-authenticator/tree/master/pkg/token) authenticator - now a [Kubernetes SIG](https://github.com/kubernetes-sigs) - package into the lambda function, so the go client can generate an authentication token
+3. Create a RESTful call into your Kubernets API server, inserting the authentication Bearer Token 
+4. Ensure the lambda function has appropriate access to assume the K8 necessary authentication role needed for token generation
 
 ### Lambda role
 When you create a lambda function, you must assign it an IAM role. The role I created to accompany
@@ -163,6 +104,43 @@ my lambda function has 3 associated policies:
 - An EKS service policy, so the function can call into the EKS service (i.e. to list clusters, etc...)
 - An assume policy, which allows the lambda function to assume the authentication role required by the EKS cluster
 ![EKS authentications](/images/lambda-trust.png)
+
+### Bearer Token
+It is possible to directly access the API server, if the RESTful call is in the right format. This is described in the kubernetes [documentation](https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/). Here is an example using _curl_. Notice the Bearer Token.  We use the same element to pass the encoded IAM role which is generated by the external/plug-in authenticator.  
+
+We create a similar RESTful call using the go client.
+
+```bash
+$ APISERVER=$(kubectl config view | grep server | cut -f 2- -d ":" | tr -d " ")
+$ TOKEN=$(kubectl describe secret $(kubectl get secrets | grep default | cut -f1 -d ' ') | grep -E '^token' | cut -f2 -d':' | tr -d '\t')
+$ curl $APISERVER/api --header "Authorization: Bearer $TOKEN" --insecure
+{
+  "kind": "APIVersions",
+  "versions": [
+    "v1"
+  ],
+  "serverAddressByClientCIDRs": [
+    {
+      "clientCIDR": "0.0.0.0/0",
+      "serverAddress": "10.0.1.149:443"
+    }
+  ]
+}
+```
+
+The API server decodes the bearer token, and then uses AWS STS, to verify that the user/lambda function has legitimate access to the given role.  This API server decoding is roughly equivalent to the following:
+
+```bash
+curl -X GET \
+     -H "accept: application/json" \
+     -H "x-k8s-aws-id: $CLUSTERNAME" \
+     $(aws-iam-authenticator token -i $CLUSTERNAME | \
+        jq -r ".status.token" | \
+        sed 's/k8s-aws-v1\.//' | \
+        base64 -D)
+```
+
+The role must be properly mapped via a ConfigMap (as previously shown above) to a kubernetes cluster role, before the command can be accepted.
 
 ## Summary
 Once everything is in place, and your function is uploaded - invoke it.
@@ -181,16 +159,15 @@ $ aws lambda invoke --function-name eksClient \
 ```
 
 So, we have demonstrated how it is possible to use a lambda function to interact with your EKS cluster.
-While the lambda function is not recommended for production use as is, it shows how
-such a task can be accomplished.
+I would recommend additional error checking be added before you use this lambda for production use.
 
-The working code is located in the following [repository](https://github.com/nbrandaleone/eksClient).  Before you use it yourself, please review and improve where necessary. Also, there are several spots where values are hard-coded and should take environmental variables for greater flexibility. Also, the function should support Lambda _context_, but since it is not the target of an event, I did not import or use that package..
+The working code is located in the following [repository](https://github.com/nbrandaleone/eksClient). 
 
 ___
 
 #### **References:**
 
-[Go client program](https://github.com/kubernetes/client-go)
+[Go client package](https://github.com/kubernetes/client-go)
 
 [AWS Go SDK version 1](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/welcome.html)
 
