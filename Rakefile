@@ -7,7 +7,7 @@ end
 
 task :deploy do
   puts "Deploying to S3"
-  `cd _site; aws s3 sync . s3://www.nickaws.net --profile home`
+  `cd _site; aws s3 sync . s3://www.nickaws.net --profile personal`
 end
 
 task :web do
