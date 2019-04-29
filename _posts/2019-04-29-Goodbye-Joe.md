@@ -16,7 +16,7 @@ Although I do not write much code in Erlang, I am writing more and more code in 
 
 With the rise of IoT, web-sockets and the need to more efficiently drive our multi-core processors I see languages like Erlang and Elixir becoming more popular over time. In particular, one should look at [Phoenix](https://phoenixframework.org/), the Elixir web framework which can handle millions of connections without a sweat.
 
-Finally, if you have an opportunity to go to an Elixir conference -> **Go**.  I had the priviledge of meeting Jose Valim, the creator of [Elixir](https://en.wikipedia.org/wiki/Elixir_(programming_language)).  He could not be more approachable and down to earth. Jose is interested in solving real-world problems with his language. He is also a great speaker and evangelist for the language and ecosystem.
+Finally, if you have an opportunity to go to an Elixir conference -> **Go**.  I had the priviledge of meeting Jose Valim, the creator of [Elixir](https://en.wikipedia.org/wiki/Elixir_(programming_language)).  Jose is brilliant and he could not be more approachable and down to earth. Jose is interested in solving real-world problems with his language. He is also a great speaker and evangelist for the language and ecosystem.
 
 ## Elixir and AWS
 
@@ -58,7 +58,7 @@ def poll_all_instances() do
 
 This code uses `pmap` to parallelizes the same request over all regions. The request is to ask for all instances in the region.  The rest of the function relies upon the [ExAws](https://github.com/ex-aws/ex_aws) library to generate the appropriately signed HTTPS REST-ful call into the AWS platform. I then parse out the data I am most interested in.  When the data is all collected, I flatten out the result into a list that I then pretty-print out to the screen.
 
-If you are not familiar with the pipe operator (->), you do not know whare you are missing. In case you are curious, `pmap` is a user-defined function, building upon Elixir primitives that create async processes, and then waits for all processes to be completed.
+If you are not familiar with the pipe operator (|>), you do not know whare you are missing. In case you are curious, `pmap` is a user-defined function, building upon Elixir primitives that create async processes, and then waits for all processes to be completed.
 
 Doing the same thing in _Go_ takes up many more LOC using `wg.Add(1)/wg.Wait()` and go routines, although logically identical.
 
