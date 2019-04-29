@@ -6,7 +6,7 @@ categories: aws elixir
 ---
 ![Erlang logo](/images/erlang.jpg)
 
-[Joe Armstrong](https://en.wikipedia.org/wiki/Joe_Armstrong_(programmer)), one of the creators of the Erlang language, died a little over a week ago on April 20, 2019. The Erlang language, is now over 30 years old, is second most popular virtual machine (i.e. BEAM) after the JVM. It is the first production grade language to focus on concurrency at scale.  It is common for Erlang programs to spin up tens to hundredes of thousands of processes.
+[Joe Armstrong](https://en.wikipedia.org/wiki/Joe_Armstrong_(programmer)), one of the creators of the Erlang language, died a little over a week ago on April 20, 2019. The Erlang language is now over 30 years old, and it is the second most popular virtual machine (i.e. BEAM) after the JVM. It is the first production grade language to focus on concurrency at scale.  It is common for an Erlang program to spin-up hundreds of thousands of processes.
 
 Although Erlang was originally written to power voice switches at Ericcson, Cisco now ships two million devices a year running Erlang.  It is estimated 90% of all internet traffic goes through [Erlang](https://twitter.com/guieevc/status/1002494428748140544) controlled nodes.
 
@@ -58,7 +58,7 @@ def poll_all_instances() do
 
 This code uses `pmap` to parallelizes the same request over all regions. The request is to ask for all instances in the region.  The rest of the function relies upon the [ExAws](https://github.com/ex-aws/ex_aws) library to generate the appropriately signed HTTPS REST-ful call into the AWS platform. I then parse out the data I am most interested in.  When the data is all collected, I flatten out the result into a list that I then pretty-print out to the screen.
 
-If you are not familiar with the pipe operator (|>), you do not know whare you are missing. In case you are curious, `pmap` is a user-defined function, building upon Elixir primitives that create async processes, and then waits for all processes to be completed.
+If you are not familiar with the pipe operator, you do not know whare you are missing. In case you are curious, `pmap` is a user-defined function, building upon Elixir primitives that create async processes, and then waits for all processes to be completed.
 
 Doing the same thing in _Go_ takes up many more LOC using `wg.Add(1)/wg.Wait()` and go routines, although logically identical.
 
@@ -81,7 +81,9 @@ The output of my program...
 
 ## Doing this in the Real World
 
-In case you are curious, a company recently issued a [blog](https://runbook.cloud/blog/posts/how-we-massively-reduced-our-aws-lambda-bill-with-go/) post, where they talked about how they used _Go_ to increase the efficiency of their lambda functions.  They ended up saving millions of dollars in execution costs, while essentially doing the same thing that we accomplished above.
+In case you are curious, a company recently issued a [blog](https://runbook.cloud/blog/posts/how-we-massively-reduced-our-aws-lambda-bill-with-go/) post, where they talked about how they used _Go_ to increase the efficiency of their lambda functions.  They ended up saving a ton of money in execution costs, while essentially doing the same thing that we accomplished above.
+
+Here is a similar [blog](http://tech.adroll.com/blog/dev/2018/01/08/quaff-that-potion-saving-millions-with-elixir-and-erlang.html) entry about a company that ended up saving **millions** of dollars by moving part of the code to Elixir and Erlang. Very cool!
 
 I see a bright future for Elixir, _Go_ and a variety of other highly concurrent languages. I am investigating [Pony](https://www.ponylang.io/) this week.
 
