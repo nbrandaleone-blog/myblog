@@ -11,3 +11,7 @@
 	rake deploy
 4) To create new page. Go into _posts.
 	https://jekyllrb.com/docs/posts/
+
+# Git commands
+git push origin master
+git pull
