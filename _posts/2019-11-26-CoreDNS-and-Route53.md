@@ -19,7 +19,7 @@ Well, fortunately - there is a solution!  [CoreDNS](https://kubernetes.io/blog/2
 The other option is to use AWS [CloudMap](https://aws.amazon.com/cloud-map/). Cloud Map provides service discovery for compute resources within your VPC. Check out this [blog](https://aws.amazon.com/blogs/containers/cross-amazon-eks-cluster-app-mesh-using-aws-cloud-map/) post, which leveraged it for EKS to EKS communication using App Mesh (a type of servive mesh).  Pretty cool stuff!  :-)
 
 ## Configuring CoreDNS
-The settings for CoreDNS are handled via a configmap, which lives in the kube-system namespace.  We must edit this CM in order to add the route53 plugin.0:w
+The settings for CoreDNS are handled via a configmap, which lives in the kube-system namespace.  We must edit this CM in order to add the route53 plugin. The configuration stanza is specific to a Route53 zone.
 
 
 ### Original ConfigMap
