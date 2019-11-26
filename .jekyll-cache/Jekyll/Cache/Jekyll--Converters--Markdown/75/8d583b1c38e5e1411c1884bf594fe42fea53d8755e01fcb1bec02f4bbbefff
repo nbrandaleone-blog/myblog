@@ -1,0 +1,59 @@
+I"�<p><img src="/images/what-is-eks.png" alt="EKS cluster creation" /></p>
+
+<p>Launching an EKS (Elastic Kubernetes Service) cluster is <strong>NOT</strong> as easy as it should be. If you follow the documentation, these are the steps to take:</p>
+<ol>
+  <li>Create an IAM Service Role for EKS.  This only has to be done once.</li>
+  <li>You launch a CloudFormation script to create a dedicated VPC (optional). One needs three subnets, one for each AZ that the masters will be deployed into.</li>
+  <li>You create your EKS management plane.  This just takes a few clicks in the Console, or a line or two in the CLI.</li>
+  <li>Edit the KUBECONFIG file with proper data for server endpoint, certificate authority and IAM info for the heptio authenticator.</li>
+  <li>You launch another CloudFormation script, in order to launch your worker nodes.</li>
+  <li>You copy the worker node <em>NodeInstanceRole</em> from the CF output, and then use it as input for an authorization config-map.  This allows worker nodes to dynamically join the cluster in a secure manner.</li>
+</ol>
+
+<p>If you do this a few times, you will find it not too onerous. Also, you can use <a href="https://www.terraform.io/docs/providers/aws/guides/eks-getting-started.html">Terraform</a> scripting or other tools to glue everthing together. Still, it is <strong>NOT</strong> easy.  If you have worked on GCP or Azure, it is a single line of commands that launches both your masters and workers.  This is 2018 AWS - let’s polish that API!</p>
+
+<p>Fortunately, the Kubernetes open-source community being what it is, a partner has already solved this problem. <a href="https://www.weave.works">Weaveworks</a> has created a github repo caleld <a href="https://github.com/weaveworks/eksctl"><em>eksctl</em></a>, and they describe it as “a CLI for Amazon EKS”.  Well, they are right.  In a single line of code, they automate the entire process described above, and brings the ability to launch both masters <strong>and</strong> workers into the realm of us mortals.
+<img src="/images/eksctl.png" alt="eksctl cluster creation" /></p>
+
+<h4 id="comparison-of-cli-commands-to-launch-kubernetes-clusters">Comparison of CLI commands to launch Kubernetes clusters</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Cloud Provider</th>
+      <th>Command</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>eksctl (AWS)</td>
+      <td>eksctl create cluster</td>
+      <td>3 masters, 2 workers</td>
+    </tr>
+    <tr>
+      <td>AWS</td>
+      <td>aws eks create-cluster –name devel –role-arn arn:aws:iam::111122223333:role/eks-service-role-AWSServiceRoleForAmazonEKS-EXAMPLEBKZRQR –resources-vpc-config subnetIds=subnet-a9189fe2,subnet-50432629,securityGroupIds=sg-f5c54184</td>
+      <td>3 masters only</td>
+    </tr>
+    <tr>
+      <td>GCP</td>
+      <td>gcloud container clusters create CLUSTER_NAME –zone COMPUTE_ZONE</td>
+      <td>1 master, 3 workers</td>
+    </tr>
+    <tr>
+      <td>Azure</td>
+      <td>az acs create –orchestrator-type kubernetes –resource-group myResourceGroup –name myK8sCluster –generate-ssh-keys</td>
+      <td>1 master, 3 workers</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+<p><strong>References:</strong></p>
+
+<p><a href="http://localhost:4000/aws/2018/07/01/Easily-create-an-EKS-cluster.html">eksctl repo</a></p>
+
+<p><a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html">EKS documentation - html</a> or
+ <a href="https://docs.aws.amazon.com/eks/latest/userguide/eks-ug.pdf">EKS documentation - PDF</a></p>
+:ET

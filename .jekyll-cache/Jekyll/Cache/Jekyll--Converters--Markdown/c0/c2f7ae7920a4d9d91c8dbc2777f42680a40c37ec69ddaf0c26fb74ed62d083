@@ -1,0 +1,7 @@
+I"ˆ<p><img src="/images/authenticator.png" alt="IAM authentication" />
+A few weeks ago AWS released EKS or their managed Elastic Kubernetes Service. What is amazing, is that it <strong>IS</strong> Kubernetes (version 1.10).  Of course, there are some AWS subleties. The most significant are:</p>
+<ol>
+  <li><strong>VPC Support.</strong> A CNI networking plug-in which allows the containers to run within the VPC CIDR address space.</li>
+  <li><strong>IAM Authentication</strong>. All <em>kubectl</em> calls will be authenticated using an IAM user/role. This requires a separate executable to be installed on both the client and K8 masters.</li>
+</ol>
+:ET

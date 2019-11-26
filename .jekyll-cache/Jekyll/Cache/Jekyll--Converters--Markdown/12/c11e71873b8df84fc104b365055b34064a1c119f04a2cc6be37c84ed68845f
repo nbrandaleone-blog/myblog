@@ -1,0 +1,171 @@
+I"�8<p><img src="/images/authenticator.png" alt="EKS authentications" /></p>
+
+<details>
+<summary><strong>Blog and Code update</strong></summary>
+<p>
+Due to feedback from colleagues (thank you Chris Hein and Paul Maddox!) I have significantly cleaned up the code needed to interact with EKS using the kubernetes go client. This blog post has been edited since it was originally released on August 26, 2018.
+</p>
+<hr />
+</details>
+
+<p>One typically interacts with a Kubernetes cluster through <em>kubectl</em>. However, that only really works for interactive commands. When you want to automate something, you need to script it. Fortunately, there are several excellent kubernetes client <a href="https://kubernetes.io/docs/reference/using-api/client-libraries/">libraries</a>. The officially supported one is written in <a href="https://github.com/kubernetes/client-go/">Go</a>, simply because kubernetes is written in Go.</p>
+
+<p>Now, there is a hurdle that must be overcome when scripting for an EKS cluster. EKS, like all AWS services, uses <em>IAM</em> for authentication. This means, that any scripts also need to somehow use IAM. The official Go client library supports external authenticators (now called credential <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins">plugins</a>), as defined in your local KUBECONFIG file. Unfortunately, this support for external authenticators is not yet supported in other libraries (who doesn’t love <a href="https://github.com/kubernetes-client/python">Python</a> these days?!). So, we will use the Go client library to demonstrate how to script interactions with your EKS cluster.</p>
+
+<h2 id="using-the-go-client">Using the Go client</h2>
+
+<p>Grab the sample <a href="https://github.com/kubernetes/client-go/tree/master/examples/out-of-cluster-client-configuration">code</a> from the repository, for <strong>out-of-cluster-client-configuration</strong>.</p>
+
+<h3 id="running-this-example">Running this example</h3>
+
+<p>Make sure your <code class="highlighter-rouge">kubectl</code> is configured and pointed to a cluster. You also need your <a href="https://github.com/kubernetes-sigs/aws-iam-authenticator">authenticator</a> plugin installed on your system, and your <em>kubectl</em> config file referencing it. Notice how the arguments being passed to the authenticator references a <strong>role</strong>. That is an <strong>IAM</strong> role that the user must be able to execute for authentication to succeed. The <a href="https://github.com/kubernetes-sigs/aws-iam-authenticator">authenticator</a> repo and AWS <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html">docs</a> describes how you must create a role to be used for authentication, and then use a <strong>ConfigMap</strong> to update your cluster to recognized that particular role.</p>
+
+<p><strong>Kubectl Configuration file</strong></p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># [...]</span>
+<span class="na">users</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">kubernetes-admin</span>
+  <span class="na">user</span><span class="pi">:</span>
+    <span class="na">exec</span><span class="pi">:</span>
+      <span class="na">apiVersion</span><span class="pi">:</span> <span class="s">client.authentication.k8s.io/v1alpha1</span>
+      <span class="na">command</span><span class="pi">:</span> <span class="s">aws-iam-authenticator</span>
+      <span class="na">args</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s2">"</span><span class="s">token"</span>
+        <span class="pi">-</span> <span class="s2">"</span><span class="s">-i"</span>
+        <span class="pi">-</span> <span class="s2">"</span><span class="s">CLUSTER_ID"</span>
+        <span class="pi">-</span> <span class="s2">"</span><span class="s">-r"</span>
+        <span class="pi">-</span> <span class="s2">"</span><span class="s">ROLE_ARN"</span>
+  <span class="c1"># no client certificate/key needed here!</span>
+</code></pre></div></div>
+<p><strong>Kubernetes ConfigMap</strong></p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">aws-auth</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">kube-system</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">mapRoles</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s"># statically map arn:aws:iam::000000000000:role/KubernetesAdmin to cluster admin</span>
+    <span class="s">- roleARN: arn:aws:iam::000000000000:role/KubernetesAdmin</span>
+      <span class="s">username: kubernetes-admin</span>
+      <span class="s">groups:</span>
+      <span class="s">- system:masters</span>
+<span class="c1"># [... for worker node authentication]</span>
+</code></pre></div></div>
+<p>I created a <em>kubernetesAdmin</em> role for all my trusted colleagues who need access to the cluster by making us all part of an IAM group, which has the following role access.</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># get your account ID</span>
+<span class="s">ACCOUNT_ID=$(aws sts get-caller-identity --output text --query 'Account')</span>
+
+<span class="c1"># define a role trust policy that opens the role to users in your account (limited by IAM policy)</span>
+<span class="s">POLICY=$(echo -n '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::'; echo -n "$ACCOUNT_ID"; echo -n ':root"},"Action":"sts:AssumeRole","Condition":{}}]}')</span>
+
+<span class="c1"># create a role named KubernetesAdmin (will print the new role's ARN)</span>
+<span class="s">aws iam create-role \</span>
+  <span class="s">--role-name KubernetesAdmin \</span>
+  <span class="s">--description "Kubernetes administrator role (for AWS IAM Authenticator for Kubernetes)." \</span>
+  <span class="s">--assume-role-policy-document "$POLICY" \</span>
+  <span class="s">--output text \</span>
+  <span class="s">--query 'Role.Arn'</span>
+</code></pre></div></div>
+
+<p>Run <code class="highlighter-rouge">kubectl get nodes</code> to confirm that everything is working.</p>
+
+<p>Run this application with:</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span><span class="nb">cd </span>out-of-cluster-configuration
+<span class="nv">$ </span>go build <span class="nt">-o</span> app main.go
+<span class="nv">$ </span>./app
+There are 12 pods <span class="k">in </span>the cluster
+Pod example-xxxxx <span class="k">in </span>namespace default not found</code></pre></figure>
+
+<hr />
+
+<h2 id="creating-a-lambda-function">Creating a Lambda function</h2>
+<p>In order to run a Lambda function that can interact with our cluster, there is some preparation work required:</p>
+<ol>
+  <li>Pass the appropriate EKS cluster name, AWS region and IAM authentication role required for EKS access via environmental variables into the lambda function</li>
+  <li>Import the <a href="https://github.com/kubernetes-sigs/aws-iam-authenticator/tree/master/pkg/token">heptio</a> authenticator - now a <a href="https://github.com/kubernetes-sigs">Kubernetes SIG</a> - package into the lambda function, so the go client can generate an authentication token</li>
+  <li>Create a RESTful call into your Kubernets API server, inserting the authentication Bearer Token</li>
+  <li>Ensure the lambda function has appropriate access to assume the K8 necessary authentication role needed for token generation</li>
+</ol>
+
+<h3 id="lambda-role">Lambda role</h3>
+<p>When you create a lambda function, you must assign it an IAM role. The role I created to accompany
+my lambda function has 3 associated policies:</p>
+<ul>
+  <li>A CloudWatch policy. This is standard for all lambda functions, so they log output and errors</li>
+  <li>An EKS service policy, so the function can call into the EKS service (i.e. to list clusters, etc…)</li>
+  <li>An assume policy, which allows the lambda function to assume the authentication role required by the EKS cluster
+<img src="/images/lambda-trust.png" alt="EKS authentications" /></li>
+</ul>
+
+<h3 id="bearer-token">Bearer Token</h3>
+<p>It is possible to directly access the API server, if the RESTful call is in the right format. This is described in the kubernetes <a href="https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/">documentation</a>. Here is an example using <em>curl</em>. Notice the Bearer Token.  We use the same element to pass the encoded IAM role which is generated by the external/plug-in authenticator.</p>
+
+<p>We create a similar RESTful call using the go client.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ APISERVER</span><span class="o">=</span><span class="si">$(</span>kubectl config view | <span class="nb">grep </span>server | <span class="nb">cut</span> <span class="nt">-f</span> 2- <span class="nt">-d</span> <span class="s2">":"</span> | <span class="nb">tr</span> <span class="nt">-d</span> <span class="s2">" "</span><span class="si">)</span>
+<span class="nv">$ TOKEN</span><span class="o">=</span><span class="si">$(</span>kubectl describe secret <span class="si">$(</span>kubectl get secrets | <span class="nb">grep </span>default | <span class="nb">cut</span> <span class="nt">-f1</span> <span class="nt">-d</span> <span class="s1">' '</span><span class="si">)</span> | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s1">'^token'</span> | <span class="nb">cut</span> <span class="nt">-f2</span> <span class="nt">-d</span><span class="s1">':'</span> | <span class="nb">tr</span> <span class="nt">-d</span> <span class="s1">'\t'</span><span class="si">)</span>
+<span class="nv">$ </span>curl <span class="nv">$APISERVER</span>/api <span class="nt">--header</span> <span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span> <span class="nt">--insecure</span>
+<span class="o">{</span>
+  <span class="s2">"kind"</span>: <span class="s2">"APIVersions"</span>,
+  <span class="s2">"versions"</span>: <span class="o">[</span>
+    <span class="s2">"v1"</span>
+  <span class="o">]</span>,
+  <span class="s2">"serverAddressByClientCIDRs"</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">"clientCIDR"</span>: <span class="s2">"0.0.0.0/0"</span>,
+      <span class="s2">"serverAddress"</span>: <span class="s2">"10.0.1.149:443"</span>
+    <span class="o">}</span>
+  <span class="o">]</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>The API server decodes the bearer token, and then uses AWS STS, to verify that the user/lambda function has legitimate access to the given role.  This API server decoding is roughly equivalent to the following:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-X</span> GET <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"accept: application/json"</span> <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"x-k8s-aws-id: </span><span class="nv">$CLUSTERNAME</span><span class="s2">"</span> <span class="se">\</span>
+     <span class="si">$(</span>aws-iam-authenticator token <span class="nt">-i</span> <span class="nv">$CLUSTERNAME</span> | <span class="se">\</span>
+        jq <span class="nt">-r</span> <span class="s2">".status.token"</span> | <span class="se">\</span>
+        <span class="nb">sed</span> <span class="s1">'s/k8s-aws-v1\.//'</span> | <span class="se">\</span>
+        <span class="nb">base64</span> <span class="nt">-D</span><span class="si">)</span>
+</code></pre></div></div>
+
+<p>The role must be properly mapped via a ConfigMap (as previously shown above) to a kubernetes cluster role, before the command can be accepted.</p>
+
+<h2 id="summary">Summary</h2>
+<p>Once everything is in place, and your function is uploaded - invoke it.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>aws lambda invoke <span class="nt">--function-name</span> eksClient <span class="se">\</span>
+		<span class="nt">--region</span> us-east-1 <span class="se">\</span>
+		<span class="nt">--log-type</span> Tail - <span class="se">\</span>
+		| jq <span class="s1">'.LogResult'</span> <span class="nt">-r</span> | <span class="nb">base64</span> <span class="nt">-D</span>
+
+    START RequestId: b4e7770a-a961-11e8-9d7a-e18d853267af Version: <span class="nv">$LATEST</span>
+    There are 31 pods <span class="k">in </span>the cluster
+    Pod example-xxxxx <span class="k">in </span>namespace default not found
+    END RequestId: b4e7770a-a961-11e8-9d7a-e18d853267af
+    REPORT RequestId: b4e7770a-a961-11e8-9d7a-e18d853267af	Duration: 4859.56 ms	Billed Duration: 4900 ms 	Memory Size: 256 MB	Max Memory Used: 145 MB
+</code></pre></div></div>
+
+<p>So, we have demonstrated how it is possible to use a lambda function to interact with your EKS cluster.
+I would recommend additional error checking be added before you use this lambda for production use.</p>
+
+<p>The working code is located in the following <a href="https://github.com/nbrandaleone/eksClient">repository</a>.</p>
+
+<hr />
+
+<h4 id="references"><strong>References:</strong></h4>
+
+<p><a href="https://github.com/kubernetes/client-go">Go client package</a></p>
+
+<p><a href="https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/welcome.html">AWS Go SDK version 1</a></p>
+
+<p><a href="https://aws.amazon.com/blogs/developer/aws-sdk-for-go-2-0-developer-preview/">AWS Go SDK version 2</a></p>
+
+<p><a href="https://aws.amazon.com/blogs/compute/announcing-go-support-for-aws-lambda/">AWS Lambda using Go</a></p>
+
+<p><a href="https://github.com/nbrandaleone/eksClient">Repo for blog</a></p>
+
+<p><a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins">Kubernetes Authorization</a></p>
+:ET

@@ -1,0 +1,12 @@
+I"A<p>Hi! Welcome to yet another blog.  Unless you are very lucky to stumble across this site, I will assume that you are lost.  Otherwise, this blog will be a place where I store code snippets, math facts, chess games and other mental dandruff. It is my hope that it will be useful to myself and perhaps others.</p>
+
+<p>As my day job is working on Cloud infrastructure and projects, most of the materials here will most likely be AWS facts and other related bits.</p>
+
+<p>A shout out to my family: Stephanie, Jenna and Ethan. Bark to my dog Jet.</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">print_hi</span><span class="p">(</span><span class="nb">name</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">"Hi, </span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">end</span>
+<span class="n">print_hi</span><span class="p">(</span><span class="s1">'family!'</span><span class="p">)</span></code></pre></figure>
+
+:ET

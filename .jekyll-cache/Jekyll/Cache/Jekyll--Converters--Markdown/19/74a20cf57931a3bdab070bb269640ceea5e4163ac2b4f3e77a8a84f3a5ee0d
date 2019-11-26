@@ -1,0 +1,64 @@
+I"+<p><img src="/images/authenticator.png" alt="EKS authentications" /></p>
+
+<p>In this post, I am going to describe how you can turn off RBAC controls on your EKS cluster.  This also circumvents IAM authentication. Now, this essentially opens up your cluster to attack, since all EKS clusters have pubic API endpoints. The cluster is still reasonably secure, since an attacker would have to know the DNS name/IP address of the cluster, and the Service Account token. Still, I would <strong>NOT</strong> recommend it except for testing, or for using functionality that is not yet compatible with IAM credentials.</p>
+
+<p>One day PrivateLink will become available for EKS.  When that happens, turning off RBAC will be reasonable, since the cluster will be isolated from the Internet. Not today though…</p>
+
+<p>To effectively disable RBAC, global permissions can be applied granting full access:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl create clusterrolebinding permissive-binding <span class="se">\</span>
+  <span class="nt">--clusterrole</span><span class="o">=</span>cluster-admin <span class="se">\</span>
+  <span class="nt">--user</span><span class="o">=</span>admin <span class="se">\</span>
+  <span class="nt">--user</span><span class="o">=</span>kubelet <span class="se">\</span>
+  <span class="nt">--group</span><span class="o">=</span>system:serviceaccounts
+</code></pre></div></div>
+
+<h2 id="testing-using-a-new-kubeconfig">Testing using a new KUBECONFIG</h2>
+
+<p>Now, in order to test this out, I create a new KUBECONFIG, but I removed the IAM credentials and added a serviceaccount token.</p>
+
+<ul>
+  <li>List the secrets with <code class="highlighter-rouge">kubectl get secrets</code>, and one should see one named similar to <code class="highlighter-rouge">default-token-xxxxx</code>. Copy that token name for use below</li>
+  <li>Get the certificate with <code class="highlighter-rouge">kubectl get secret &lt;secret name&gt; -o jsonpath='{.data.ca\.crt}'</code></li>
+  <li>Retrieve the token with <code class="highlighter-rouge">kubectl get secret &lt;secret name&gt; -o jsonpath='{.data.token}' | base64 --decode</code></li>
+</ul>
+
+<p>Here is a sample config, with some details redacted:</p>
+
+<p><strong>Kubectl Configuration file</strong></p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">clusters</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">cluster</span><span class="pi">:</span>
+    <span class="na">certificate-authority-data</span><span class="pi">:</span> <span class="s">LS0tLS1CRU...</span>
+    <span class="na">server</span><span class="pi">:</span> <span class="s">https://3D5...397D66C9.yl4.us-east-1.eks.amazonaws.com</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">development</span>
+<span class="na">contexts</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">context</span><span class="pi">:</span>
+    <span class="na">cluster</span><span class="pi">:</span> <span class="s">development</span>
+    <span class="na">user</span><span class="pi">:</span> <span class="s">aws</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">aws</span>
+<span class="na">current-context</span><span class="pi">:</span> <span class="s">aws</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Config</span>
+<span class="na">preferences</span><span class="pi">:</span> <span class="pi">{}</span>
+<span class="na">users</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">aws</span>
+  <span class="na">user</span><span class="pi">:</span>
+    <span class="na">token</span><span class="pi">:</span> <span class="s">eyJhbGci...</span>
+</code></pre></div></div>
+
+<h2 id="execute-commands-without-the-iam-authenticator">Execute commands without the IAM authenticator</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl <span class="nt">--kubeconfig</span> ./eks-test get nodes
+
+NAME                              STATUS   ROLES    AGE   VERSION
+ip-192-168-100-225.ec2.internal   Ready    &lt;none&gt;   37d   v1.10.3
+ip-192-168-167-0.ec2.internal     Ready    &lt;none&gt;   37d   v1.10.3
+ip-192-168-233-207.ec2.internal   Ready    &lt;none&gt;   37d   v1.10.3
+</code></pre></div></div>
+
+<h2 id="summary">Summary</h2>
+
+<p>I have shown how it is possible to turn off perhaps the greatest security feature AWS has added to its managed Kubernetes service (EKS). Clearly, this is <strong>not</strong> recommended.  However, once PrivateLink becomes available it may be something worth considering.</p>
+
+<hr />
+
+:ET

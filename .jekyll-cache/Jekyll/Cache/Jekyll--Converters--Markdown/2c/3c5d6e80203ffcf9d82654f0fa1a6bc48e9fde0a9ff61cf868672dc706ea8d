@@ -1,0 +1,99 @@
+I"�!<p><img src="/images/authenticator.png" alt="IAM authentication" />
+A few weeks ago AWS released EKS or their managed Elastic Kubernetes Service. What is amazing, is that it <strong>IS</strong> Kubernetes (version 1.10).  Of course, there are some AWS subleties. The most significant are:</p>
+<ol>
+  <li><strong>VPC Support.</strong> A CNI networking plug-in which allows the containers to run within the VPC CIDR address space.</li>
+  <li><strong>IAM Authentication</strong>. All <em>kubectl</em> calls will be authenticated using an IAM user/role. This requires a separate executable to be installed on both the client and K8 masters.</li>
+</ol>
+
+<p>In terms of the IAM roles, I found the documentation good, but scattered, so I will describe how I created an EKS cluster, using an IAM role. The advantage of this method is that the <em>kubectl</em> configuration file can be shared freely among DevOps staff.  If they have access to the proper role, then they will be able to hit the Kubernetes cluster securely.  If not, the EKS masters will drop the calls.  Once authenticated, the calls will be passed on to K8 RBAC for normal authorization and processing. The new IAM process is meant to handle the authentication process of the standard AAA security model.</p>
+
+<p>I have found a common misconception. By default, EKS maps the IAM user who created the EKS cluster into the <em>system:masters</em> group.  This group is linked to the <em>cluster-admin</em> cluster role.  This kubernetes role allows super-user access to perform any action on any resource in the cluster. While this <em>AWS</em> user (or IAM group/role) has automatic access into the kubernetes cluster - <strong>no one else does!</strong>  How do we give cluster access to others?</p>
+
+<p>First of all, follow the EKS <a href="https://docs.aws.amazon.com/eks/latest/userguide/eks-ug.pdf">instructions</a>.  You will need to install the heptio authenticaor client on your laptop/workstation.  The server component will be automatically installed on your EKS cluster. The most important sections are: <em>Managing Cluster Authentication</em> through <em>Managing Users or IAM Roles for your Cluster</em></p>
+
+<p>There are 2 common methods:</p>
+<ol>
+  <li>Pass around the user credentials who created the cluster. This is a <strong>bad</strong> idea, but certainly possible for a small DevOps team. You can either then assume that role (using AWS profiles), or have <em>kubectl</em> reference that role directly.</li>
+  <li>Create a new IAM role (I use <em>KubernetesAdmin</em>), and bind that role into the <em>system:masters</em> group manually.  This is the <strong>better</strong> idea.</li>
+</ol>
+
+<p>Also, you must update the KUBECONFIG file you are using to reference this new role.</p>
+
+<h3 id="create-an-aws-iam-role">Create an AWS IAM Role</h3>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># get your account ID</span>
+<span class="nv">ACCOUNT_ID</span><span class="o">=</span><span class="si">$(</span>aws sts get-caller-identity <span class="nt">--output</span> text <span class="nt">--query</span> <span class="s1">'Account'</span><span class="si">)</span>
+
+<span class="c"># define a role trust policy that opens the role to users in your account (limited by IAM policy)</span>
+<span class="nv">POLICY</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s1">'{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::'</span><span class="p">;</span> <span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$ACCOUNT_ID</span><span class="s2">"</span><span class="p">;</span> <span class="nb">echo</span> <span class="nt">-n</span> <span class="s1">':root"},"Action":"sts:AssumeRole","Condition":{}}]}'</span><span class="si">)</span>
+
+<span class="c"># create a role named KubernetesAdmin (will print the new role's ARN)</span>
+aws iam create-role <span class="se">\</span>
+  <span class="nt">--role-name</span> KubernetesAdmin <span class="se">\</span>
+  <span class="nt">--description</span> <span class="s2">"Kubernetes administrator role (for AWS IAM Authenticator for Kubernetes)."</span> <span class="se">\</span>
+  <span class="nt">--assume-role-policy-document</span> <span class="s2">"</span><span class="nv">$POLICY</span><span class="s2">"</span> <span class="se">\</span>
+  <span class="nt">--output</span> text <span class="se">\</span>
+  <span class="nt">--query</span> <span class="s1">'Role.Arn'</span></code></pre></figure>
+
+<p>The above IAM role can be assumed by anyone in the users AWS account.  Of course, this can be limited to appropriate users/group according to the principle of <em>least priviledge</em>. Also, this role has <strong>NO</strong> policy.  It does absolutely <em>nothing</em>, except to act as a authentication token. It would be best-practices to create an IAM group, with an in-line policy only allowing this IAM group to assume the KubernetesAdmin role.</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="o">{</span>
+  <span class="s2">"Version"</span>: <span class="s2">"2012-10-17"</span>,
+  <span class="s2">"Statement"</span>: <span class="o">{</span>
+    <span class="s2">"Effect"</span>: <span class="s2">"Allow"</span>,
+    <span class="s2">"Action"</span>: <span class="s2">"sts:AssumeRole"</span>,
+    <span class="s2">"Resource"</span>: <span class="s2">"arn:aws:iam::ACCOUNT-ID-WITHOUT-HYPHENS:role/KubernetesAdmin"</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></figure>
+
+<h3 id="bind-iam-role-to-kubernetes-systemmasters-group">Bind IAM role to Kubernetes <em>system:masters</em> group</h3>
+<p>AWS has created a <a href="https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-06-05/aws-auth-
+cm.yaml">config map</a> for you called <em>aws-auth-cm.yaml</em>. You must edit/update it, to use the newly created IAM role, and bind it to the <em>system:masters</em> group. My cluster’s name is <em>EKS-attractive-gopher-1529340392</em>.</p>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+    namespace: kube-system
+    data:
+      mapRoles: |
+        - rolearn: arn:aws:iam::&lt;account ID&gt;:role/EKS-attractive-gopher-1529340392-NodeInstanceRole-9EQ7OZE3PQ34
+	  username: system:node:
+	  <span class="nb">groups</span>:
+            - system:bootstrappers
+	    - system:nodes
+	- rolearn: arn:aws:iam::&lt;account ID&gt;:role/KubernetesAdmin
+	  username: kubernetes-admin
+	  <span class="nb">groups</span>:
+	    - system:masters</code></pre></figure>
+
+<h3 id="update-the-kubeconfig-file-to-reference-the-new-iam-role">Update the KUBECONFIG file to reference the new IAM role</h3>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># boilerplate yaml...</span>
+- name: kubernetes-admin
+  user:
+    <span class="nb">exec</span>:
+      apiVersion: client.authentication.k8s.io/v1alpha1
+      <span class="nb">command</span>: heptio-authenticator-aws
+      args:
+      - <span class="s2">"token"</span>
+      - <span class="s2">"-i"</span>
+      - <span class="s2">"attractive-gopher-1529340392"</span>
+      - <span class="s2">"-r"</span>
+      - <span class="s2">"arn:aws:iam::&lt;account ID&gt;:role/KubernetesAdmin"</span>
+      <span class="nb">env</span>: null</code></pre></figure>
+
+<p>You are done.  You can now pass this KUBECONFIG file to any DevOps engineer or Developer who needs access to the Kubernetes cluster (i.e. Save the config file to a private S3 bucket). Even if the config file becomes lost, only users who have access into the AWS account <em>AND</em> have access to the role will be able to get into your K8 cluster. I think that this is a <strong>HUGE</strong> win over traditional kubernetes, and makes EKS very much in-line with other AWS services.</p>
+
+<hr />
+<p><strong>References:</strong></p>
+
+<p><a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html">EKS documentation - html</a> or
+<a href="https://docs.aws.amazon.com/eks/latest/userguide/eks-ug.pdf">EKS documentation - PDF</a></p>
+
+<p><a href="https://github.com/kubernetes-sigs/aws-iam-authenticator">heptio authenticator</a></p>
+
+<p><a href="https://aws.amazon.com/blogs/opensource/deploying-heptio-authenticator-kops/">Deploying the Heptio Authenticator</a></p>
+
+<p><a href="https://blog.lola.com/5-things-i-wish-id-known-before-setting-up-heptio-authenticator">5 things I wish I’d known before setting up heptio authenticator</a></p>
+:ET

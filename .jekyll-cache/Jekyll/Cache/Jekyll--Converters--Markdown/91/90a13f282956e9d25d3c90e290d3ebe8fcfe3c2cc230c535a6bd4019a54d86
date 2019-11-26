@@ -1,0 +1,5 @@
+I"<details>
+<summary><strong>HPA is now working with EKS!</strong></summary>
+On August 31, 2018 - according to this <a href="https://aws.amazon.com/blogs/opensource/horizontal-pod-autoscaling-eks/">blog</a> HPA is now working with EKS. I have tested it, and it is indeed true.  However, you must manually install the metrics-server, which is a bit of a bummer.  However, just follow these <a href="https://github.com/kubernetes-incubator/metrics-server">instructions</a>, and you will be able to auto-scale with the best of them.  
+</details>
+:ET

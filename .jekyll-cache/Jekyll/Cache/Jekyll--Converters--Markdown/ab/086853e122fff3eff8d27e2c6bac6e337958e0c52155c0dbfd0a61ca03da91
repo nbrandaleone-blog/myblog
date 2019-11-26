@@ -1,0 +1,5 @@
+I"<h2 id="how-expensive-is-s3-hosting-of-static-content">How expensive is S3 hosting of static content?</h2>
+<p>It turns out to be dirt cheap. I have included a recent bill, and it is about $1/month. Most of that cost is Route53, and the remainder ($0.06) is CloudFront.  I do not recall if that includes the cost of the domain name.  If it does not, let’s call it an additional dollar a month.  Overall, S3 hosting is an extremely cost effective way to host a static web site.</p>
+
+<p><img src="/images/aws-bill.png" alt="AWS bill" /></p>
+:ET

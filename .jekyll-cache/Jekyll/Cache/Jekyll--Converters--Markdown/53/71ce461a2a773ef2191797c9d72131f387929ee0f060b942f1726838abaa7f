@@ -1,0 +1,2 @@
+I"ú<p>One of the amazingly powerful aspects of Kubernetes is its dynamic nature. Deployments watch and replace failed pods, application versions can be rolled forward and backwards with ease, and both workers nodes and pods can be automatically scaled. This blog will discuss worker node scaling, known as <em>Cluster Autoscaling</em>.  We will discuss pod autoscaling using the <em>Horizontal Pod Autoscaler</em> in another blog <a href="http://www.nickaws.net/aws/2018/07/03/EKS-and-HPA.html">post</a>.</p>
+:ET

@@ -1,0 +1,2 @@
+I"h<p>It is common to ask which instances (i.e. virtual machines) are running in your AWS account. Instances are the most expensive part of almost any AWS bill. However, it can be tricky for new DevOps Engineers to find this information. Below is a simple Ruby script (the AWS gem is already installed), which prints out this information for a single region.</p>
+:ET

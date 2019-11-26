@@ -1,0 +1,106 @@
+I"$<p><img src="/images/erlang.jpg" alt="Erlang logo" /></p>
+
+<p><a href="https://en.wikipedia.org/wiki/Joe_Armstrong_(programmer)">Joe Armstrong</a>, one of the creators of the Erlang language, died a little over a week ago on April 20, 2019. The Erlang language is now over 30 years old, and it is the second most popular virtual machine (i.e. BEAM) after the JVM. It is the first production grade language to focus on concurrency at scale.  It is common for an Erlang program to spin-up hundreds of thousands of processes.</p>
+
+<p>Although Erlang was originally written to power voice switches at Ericcson, Cisco now ships two million devices a year running Erlang.  It is estimated 90% of all internet traffic goes through <a href="https://twitter.com/guieevc/status/1002494428748140544">Erlang</a> controlled nodes.</p>
+
+<h2 id="the-rise-of-elixir">The rise of Elixir</h2>
+
+<p>Although I do not write much code in Erlang, I am writing more and more code in <a href="https://elixir-lang.org/">Elixir</a>.  Elixir runs on the Erlang virtual machine, and is fully bytecode compatible with Erlang.  However, its syntax is more like <em>Ruby</em>, and therefore more digestible and comprehensible than Erlang, even while maintaining its functional roots.</p>
+
+<p>With the rise of IoT, web-sockets and the need to more efficiently drive our multi-core processors I see languages like Erlang and Elixir becoming more popular over time. In particular, one should look at <a href="https://phoenixframework.org/">Phoenix</a>, the Elixir web framework which can handle millions of connections without a sweat.</p>
+
+<p>Finally, if you have an opportunity to go to an Elixir conference -&gt; <strong>Go</strong>.  I had the priviledge of meeting Jose Valim, the creator of <a href="https://en.wikipedia.org/wiki/Elixir_(programming_language)">Elixir</a>.  Jose is brilliant and he could not be more approachable and down to earth. Jose is interested in solving real-world problems with his language. He is also a great speaker and evangelist for the language and ecosystem.</p>
+
+<h2 id="elixir-and-aws">Elixir and AWS</h2>
+
+<p>It is common when working on the AWS platform, that you most poll different regions to find out information.  For example, how many instances am I running world-wide?  Surprisingly, this is a challenging question to answer.  Each region is built independent of all the others (in order to isolate regional failures) and it therefore requires independent calls into the nearly 20 regions. <strong>NOTE:</strong> I would also recommend that one examines “AWS Config” (a terribly named service), which does have the ability to aggregate data from multiple regions. The AWS “Tag Editor” can also be helpful when working in the Console for tracking down resources.</p>
+
+<p>Now, 20 API calls is not a big thing.  It can easily be done sequentially.  However, why should you?  Most of your time is waiting for network I/O. You can easily speed up your query by using <a href="https://blog.golang.org/concurrency-is-not-parallelism">concurrency</a>.</p>
+
+<p>I wrote a series of a small programs that did just that.  This is what I found.</p>
+
+<hr />
+
+<table>
+  <thead>
+    <tr>
+      <th>Language</th>
+      <th>Time (seconds)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Bash AWS CLI</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <td>Python</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <td>Go (serial)</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <td>Elixir</td>
+      <td>1.8</td>
+    </tr>
+    <tr>
+      <td>Go (concurrent)</td>
+      <td>1.5</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<p>Now, the Go program turned out to be the fastest, which is not entirely surprising.  Go has an officially supported <a href="https://github.com/aws/aws-sdk-go-v2">SDK</a> on AWS. It compiles down to a tiny binary, and does not have the overhead of a virtual machine, which can add a great deal of latency for short-lived programs.</p>
+
+<p>Yet, the Elixir program is less than 1/2 the length of the Go program, and has a certain functional elegance that enhances its readability by a huge margin. Any fraction of a second Elixir loses in performance, it gains in developer productivity and maintainability IMHO.</p>
+
+<h3 id="let-me-see-the-code">Let me see the code!</h3>
+
+<p><strong>Elixir code</strong></p>
+
+<figure class="highlight"><pre><code class="language-elixir" data-lang="elixir"><span class="k">def</span> <span class="n">poll_all_instances</span><span class="p">()</span> <span class="k">do</span>
+    <span class="n">instance_data</span> <span class="o">=</span>
+      <span class="n">pmap</span><span class="p">(</span><span class="n">get_good_regions</span><span class="p">(),</span> <span class="k">fn</span> <span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="no">EC2</span><span class="o">.</span><span class="n">describe_instances</span><span class="p">()</span> <span class="o">|&gt;</span> <span class="no">ExAws</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="ss">region:</span> <span class="n">region</span><span class="p">)</span> <span class="o">|&gt;</span> <span class="n">parse_instance_info</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+      <span class="o">|&gt;</span> <span class="no">List</span><span class="o">.</span><span class="n">flatten</span>
+
+<span class="c1"># .. Print out data</span>
+  <span class="k">end</span></code></pre></figure>
+
+<p>This code uses <code class="highlighter-rouge">pmap</code> to parallelizes the same request over all regions. The request is to ask for all instances in the region.  The rest of the function relies upon the <a href="https://github.com/ex-aws/ex_aws">ExAws</a> library to generate the appropriately signed HTTPS REST-ful call into the AWS platform. I then parse out the data I am most interested in.  When the data is all collected, I flatten out the result into a list that I then pretty-print out to the screen.</p>
+
+<p>If you are not familiar with the pipe operator, you do not know whare you are missing. In case you are curious, <code class="highlighter-rouge">pmap</code> is a user-defined function, building upon Elixir primitives that create async processes, and then waits for all processes to be completed.</p>
+
+<p>Doing the same thing in <em>Go</em> takes up many more LOC using <code class="highlighter-rouge">wg.Add(1)/wg.Wait()</code> and go routines, although logically identical.</p>
+
+<figure class="highlight"><pre><code class="language-elixir" data-lang="elixir">  <span class="k">def</span> <span class="n">pmap</span><span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span> <span class="k">do</span>
+    <span class="n">collection</span>
+    <span class="o">|&gt;</span> <span class="no">Enum</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="o">&amp;</span><span class="p">(</span><span class="no">Task</span><span class="o">.</span><span class="n">async</span><span class="p">(</span><span class="k">fn</span> <span class="o">-&gt;</span> <span class="n">func</span><span class="o">.</span><span class="p">(</span><span class="nv">&amp;1</span><span class="p">)</span> <span class="k">end</span><span class="p">)))</span> <span class="o">|&gt;</span> <span class="no">Enum</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="o">&amp;</span><span class="no">Task</span><span class="o">.</span><span class="n">await</span><span class="o">/</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">end</span></code></pre></figure>
+
+<p>The output of my program…</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+---------------------+---------+------------+
+| Instance ID         | State   | AZ         |
++---------------------+---------+------------+
+| i-0710e838f877a5c3f | running | us-east-1c |
+| i-01c2952c2e8987f86 | running | us-west-2b |
++---------------------+---------+------------+
+</code></pre></div></div>
+
+<h2 id="doing-this-in-the-real-world">Doing this in the Real World</h2>
+
+<p>In case you are curious, a company recently issued a <a href="https://runbook.cloud/blog/posts/how-we-massively-reduced-our-aws-lambda-bill-with-go/">blog</a> post, where they talked about how they used <em>Go</em> to increase the efficiency of their lambda functions.  They ended up saving a ton of money in execution costs, while essentially doing the same thing that we accomplished above.</p>
+
+<p>Here is a similar <a href="http://tech.adroll.com/blog/dev/2018/01/08/quaff-that-potion-saving-millions-with-elixir-and-erlang.html">blog</a> entry about a company that ended up saving <strong>millions</strong> of dollars by moving part of the code to Elixir and Erlang. Very cool!</p>
+
+<p>I see a bright future for Elixir, <em>Go</em> and a variety of other highly concurrent languages. I am investigating <a href="https://www.ponylang.io/">Pony</a> this week.</p>
+
+<p><strong>RIP</strong> Joe.</p>
+
+<hr />
+:ET

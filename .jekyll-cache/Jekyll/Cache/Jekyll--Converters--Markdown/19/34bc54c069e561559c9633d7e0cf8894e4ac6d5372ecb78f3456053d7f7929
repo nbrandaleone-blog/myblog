@@ -1,0 +1,19 @@
+I"<p>A few days ago, it was <a href="http://tauday.com/state-of-the-tau">Tau Day</a> (6/28). I thought that it would also be a good time to re-activate my blog. I hope to add tidbits of code and interesting mathematics from time to time.</p>
+
+<p>The <a href="http://tauday.com/tau-manifesto">Tau Manifesto</a> was launched back in 2010. 
+The central idea is to understand that <em>π</em> is an arbitrary constant, and that it is much easier to teach students about the circle constant if Pi (<em>π</em>) was changed to represent C/r instead of C/d. As that is <em>not</em> about to happen, Michael Hartl, the founder of this movement, has created a new circle constant called tau (<em>τ</em>).</p>
+
+<p>Now, why is tau easier to understand or work with?
+Well, if tau represents C/r (6.283185307179586…), then
+a full rotation or turn of a circle can be represented as
+a single “tau” (in radians of course). One half circle is 1/2 tau, and so on.
+I believe that a major stumbling block of students would be removed
+if we moved to teaching radian measurements with tau instead of <em>π</em>.</p>
+
+<p>Michael Hartl also goes on to explain how many other
+mathematical formulas would also be easier to comprehend.</p>
+
+<p>The animated GIF below, is pretty self-explanatory.</p>
+
+<p><a title="By Lucas V. Barbosa (Own work) [Public domain], via Wikimedia Commons" href="http://commons.wikimedia.org/wiki/File%3ACircle_radians_tau.gif"><img width="256" alt="Circle radians tau" src="//upload.wikimedia.org/wikipedia/commons/2/28/Circle_radians_tau.gif" /></a></p>
+:ET

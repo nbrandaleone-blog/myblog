@@ -1,0 +1,22 @@
+I"±
+<p>It is common to ask which instances (i.e. virtual machines) are running in your AWS account. Instances are the most expensive part of almost any AWS bill. However, it can be tricky for new DevOps Engineers to find this information. Below is a simple Ruby script (the AWS gem is already installed), which prints out this information for a single region.</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">'aws-sdk-ec2'</span>  <span class="c1"># v3 of AWS Ruby SDK</span>
+<span class="nb">require</span> <span class="s1">'pp'</span>
+
+<span class="n">ec2</span> <span class="o">=</span> <span class="no">Aws</span><span class="o">::</span><span class="no">EC2</span><span class="o">::</span><span class="no">Resource</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="ss">region: </span><span class="s1">'us-east-1'</span><span class="p">)</span>
+
+<span class="n">i</span> <span class="o">=</span> <span class="n">ec2</span><span class="p">.</span><span class="nf">instances</span><span class="p">.</span><span class="nf">reduce</span><span class="p">({})</span> <span class="k">do</span> <span class="o">|</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="o">|</span>
+   <span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">.</span><span class="nf">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">.</span><span class="nf">state</span><span class="p">.</span><span class="nf">name</span><span class="p">,</span> <span class="n">i</span><span class="p">.</span><span class="nf">instance_type</span><span class="p">,</span> <span class="n">i</span><span class="p">.</span><span class="nf">public_ip_address</span><span class="p">]</span>
+   <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="n">pp</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="c1">#=&gt; {"i-0571d202e78cf8fa0"=&gt;["running", "m5.xlarge", "54.162.10.143"],</span>
+<span class="c1">#=&gt; "i-010d497776465a0aa"=&gt;["running", "t2.small", "54.89.160.235"],</span>
+<span class="c1">#=&gt; "i-0125db430bf7092b7"=&gt;["running", "t2.small", "34.239.126.165"],</span>
+<span class="c1">#=&gt; "i-0cf9dd2190de4c84a"=&gt;["running", "p2.xlarge", "34.228.56.193"]}</span></code></pre></figure>
+
+<p>Check out the <a href="https://aws.amazon.com/sdk-for-ruby/">AWS Ruby SDK</a> for more info on how to get the most out of the SDK.  The latest version (v3) is a very solid SDK, and I now think it is as good as Boto3, the popular Python SDK.</p>
+
+:ET

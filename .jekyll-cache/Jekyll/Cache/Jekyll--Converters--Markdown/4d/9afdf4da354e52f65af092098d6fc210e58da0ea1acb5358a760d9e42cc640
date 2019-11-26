@@ -1,0 +1,327 @@
+I"�N<p><img src="/images/fedv2.png" alt="Scheduler Diagram" /></p>
+
+<p>There is a great deal of buzz around Kubernetes Federation v2.  While it is still an <em>alpha</em> project, it shows great promise. It allows one to control multiple K8 clusters from a centralized master or <strong>host</strong> cluster. These <strong>member</strong> clusters can be in different regions, or even different cloud providers, or on-premise for that matter. Unlike v1 of Federation, the current release uses CRD’s extensively, which has turned out to be the most popular and stable way of extending the K8 API.</p>
+
+<h3 id="now-why-would-you-want-to-use-federation">Now, why would you want to use Federation?!</h3>
+<ol>
+  <li>High Availability / Disaster Recovery</li>
+  <li>Hybrid on-premise / cloud architecture</li>
+  <li>Avoid vendor lock-in</li>
+  <li>Isolating sensitive workloads</li>
+  <li>Centralized control</li>
+</ol>
+
+<p>To be honest, none of the reasons above are entirely compelling for the majority of Kubernetes users.  Kubernetes is open-sourced and already vendor neutral. The Kubernetes control-plan is self-healing, and if run in a multi-AZ/zone as dictated by best-practices, you are already highly available.  However, I do recognize that some enterprises will want a multi-region or multi-cloud designs for both technical and <em>political</em> reasons. For those customers - <strong>good</strong> news! Federation v2 certainly works (albeit still in alpha), and there are numerous other options as well.</p>
+
+<h2 id="federation-concepts">Federation Concepts</h2>
+<p>The recommended way of working with Federated resources or objects is to work within a scoped namespace. It is also possible to work with a cluster-wide scoping. In either case, you create a namespace within your <strong>host</strong> cluster, and a set of federated resources. Any federated resource will be replicated out to your member clusters, usually within a few seconds (no more than 20 s). The replicated federated resource is converted into a standard resource. For example, a federated deployment is converted into a deployment.  A federated namespace is converted into a regular namespace, and so on…</p>
+
+<p>The type of Federated resource that can be mirrored depends upon if there is CRD for that resource.  If so, and it has been enabled on the host cluster, then it will automatically watch for the corresponding type. <a href="https://github.com/kubernetes-sigs/kubefed"><strong>KubeFed</strong></a> (short for Kubernetes Cluster Federation v2) is configured with two types of information:</p>
+<ul>
+  <li><strong>Type configuration</strong> declares which API types KubeFed should handle</li>
+  <li><strong>Cluster configuration</strong> declares which clusters KubeFed should target</li>
+</ul>
+
+<p>Type configuration has three fundamental concepts:</p>
+<ul>
+  <li><strong>Teplates</strong> define the representation of a resource common across clusters</li>
+  <li><strong>Placement</strong> defines which clustesr the resources is intended to appear in</li>
+  <li><strong>Overrides</strong> define per-cluster field-level variation to apply to the template</li>
+</ul>
+
+<p><img src="/images/fed-concepts.png" alt="KubeFed concepts" /></p>
+
+<h2 id="federated-deployment-type-example">Federated Deployment Type Example</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>piVersion: types.kubefed.io/v1beta1
+kind: FederatedDeployment
+metadata:
+  name: test-deployment
+  namespace: <span class="nb">test
+</span>spec:
+  template:
+    <span class="o">&lt;&lt;</span> <span class="no">DEPLOYMENT</span><span class="sh"> SPEC &gt;&gt;
+  placement:
+    clusters:
+    - name: cluster2
+    - name: cluster1
+    clusterSelector:
+      matchLabels:
+        region: eu-west-1
+  overrides:
+  - clusterName: cluster2
+    clusterOverrides:
+    - path: spec.replicas
+      value: 2
+</span></code></pre></div></div>
+
+<h2 id="running-federation-v2-on-eks">Running Federation v2 on EKS</h2>
+<p>Even though Federation is an alpha feature, it can be run in EKS today.  This is because it does not rely on the master control-plane for anything special. All components can be run on the worker nodes as standard pods/deployments/CRD, etc…</p>
+
+<h2 id="installation-process">Installation Process</h2>
+<p>The installation process is fairly well <a href="https://github.com/kubernetes-sigs/kubefed/blob/master/docs/userguide.md">documented</a>, but there are a few wrinkles specific to EKS.   The KubeFed control plane can run on any v1.13 or greater Kubernetes clusters. Let’s go over the details. The following steps should occur only on the master or host cluster.  This cluster will control all the others. There is no configuration that has to be done on the member clusters - all setup is driven by the host.</p>
+
+<p>I created three clusters, using <a href="https://eksctl.io/">eksctl.io</a>. I named them cluster0, cluster1 and cluster2.  They live in 3 different regions, and cluster0 is acting as the host. The architecture will look similar to this following diagram.</p>
+
+<p><img src="/images/fed-demo.png" alt="KubeFed network diagram" /></p>
+
+<h3 id="helm-chart-deployment">Helm Chart Deployment</h3>
+<p>Since EKS has RBAC enabled, let <a href="https://github.com/kubernetes-sigs/kubefed/blob/master/charts/kubefed/README.md">create</a> a service account with the permissions necessart to deploy KubeFed</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tiller
+    namespace: kube-system
+</span><span class="no">EOF
+
+</span><span class="nv">$ </span>helm init <span class="nt">--service-account</span> tiller
+</code></pre></div></div>
+
+<h3 id="installing-the-chart">Installing the Chart</h3>
+<p>First, add the KubeFed chart repo to your local repository. Then, install the chart.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>helm repo add kubefed-charts https://raw.githubusercontent.com/kubernetes-sigs/kubefed/master/charts
+
+<span class="nv">$ </span>helm repo list
+NAME            URL
+kubefed-charts   https://raw.githubusercontent.com/kubernetes-sigs/kubefed/master/charts
+
+<span class="nv">$ </span>helm <span class="nb">install </span>kubefed-charts/kubefed <span class="nt">--name</span> kubefed <span class="nt">--version</span><span class="o">=</span>0.1.0-rc6 <span class="nt">--namespace</span> kube-federation-system
+</code></pre></div></div>
+
+<p>There are instructions on how to delete the chart when you are <a href="https://github.com/kubernetes-sigs/kubefed/blob/master/charts/kubefed/README.md">done</a>.  I must warn you that all CR and CRD must be deleted, or else you will create problems for yourself.</p>
+
+<h3 id="prepare-to-join-clusters-into-the-federation">Prepare to Join clusters into the Federation</h3>
+<p>A separate tool must be downloaded and installed, in order to join the clusters together. The tool is called <em>kubefedctl</em>. It can be obtained from <a href="https://github.com/kubernetes-sigs/kubefed/releases">github</a>, and should match the version of the helm chart (at this time v0.1.0-rc6).</p>
+
+<p>Now, this is where I ran into a little bit of trouble.  This tool, uses your <em>KUBECTL</em> config file in order to be properly authenticated into the other member clusters. Apparently it parses the file, and the format that EKS uses to generate the YAML did not parse properly.  So, I manually adjusted my KUBECTL file to eliminate all offending characters, shift uppercase to lowercase letters and so on.  Once my file was converted into an acceptable format, there were <strong>NO</strong> other changes I had to make in order to get KubeFed working on EKS.</p>
+
+<h3 id="original-kubectl-file-generated-by-eks-for-style-comparison">Original Kubectl file, generated by EKS (for style comparison)</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apiVersion: v1
+clusters:
+- cluster:
+certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSU &lt;...&gt; <span class="nv">LS0tLQo</span><span class="o">=</span>
+    server: https://CB5FB82AD8B3FA05F1305283A2D84ECE.sk1.us-west-2.eks.amazonaws.com
+  name: basic.us-west-2.eksctl.io
+contexts:
+- context:
+    cluster: basic.us-west-2.eksctl.io
+    user: nick-aws@basic.us-west-2.eksctl.io
+  name: nick-aws@basic.us-west-2.eksctl.io
+current-context: nick-aws@basic.us-west-2.eksctl.io
+</code></pre></div></div>
+
+<h3 id="format-needed-by-kubefedctl-tool">Format needed by <em>kubefedctl</em> tool</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apiVersion: v1
+clusters:
+- cluster:
+certificate-authority-data: LS0tLS1CRUdJTiBDRVNBVE &lt;...&gt; <span class="nv">LS0tLQo</span><span class="o">=</span>
+    server: https://aa9c46c6e79551ffb7ced7260168ffb4.sk1.us-west-2.eks.amazonaws.com
+  name: cluster0
+contexts:
+- context:
+    cluster: cluster0
+    user: nick0
+  name: nick0-cluster0
+- context:
+    cluster: cluster1
+    user: nick1
+  name: nick1-cluster1
+- context:
+    cluster: cluster2
+    user: nick2
+  name: nick2-cluster2
+current-context: nick0-cluster0
+</code></pre></div></div>
+
+<h3 id="join-clusters">Join clusters</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubefedctl <span class="nb">join </span>cluster0 <span class="nt">--cluster-context</span> nick0-cluster0 <span class="se">\</span>
+  <span class="nt">--host-cluster-context</span> nick0-cluster0 <span class="nt">--v</span><span class="o">=</span>2
+<span class="nv">$ </span>kubefedctl <span class="nb">join </span>cluster1 <span class="nt">--cluster-context</span> nick1-cluster1 <span class="se">\</span>
+  <span class="nt">--host-cluster-context</span> nick0-cluster0 <span class="nt">--v</span><span class="o">=</span>2
+<span class="nv">$ </span>kubefedctl <span class="nb">join </span>cluster2 <span class="nt">--cluster-context</span> nick2-cluster2 <span class="se">\</span>
+  <span class="nt">--host-cluster-context</span> nick0-cluster0 <span class="nt">--v</span><span class="o">=</span>2
+
+<span class="nv">$ </span>kubectl <span class="nt">-n</span> kube-federation-system get kubefedclusters
+NAME       READY   AGE
+cluster0   True    10d
+cluster1   True    10d
+cluster2   True    10d
+</code></pre></div></div>
+
+<p>Now, let us examine all the Custom Resource Defintions running on the host cluster:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl get crd | <span class="nb">grep </span>kubefed.io | <span class="nb">awk</span> <span class="s1">'{ print $1 }'</span>
+clusterpropagatedversions.core.kubefed.io
+dnsendpoints.multiclusterdns.kubefed.io
+domains.multiclusterdns.kubefed.io
+federatedclusterroles.types.kubefed.io
+federatedconfigmaps.types.kubefed.io
+federateddeployments.types.kubefed.io
+federatedingresses.types.kubefed.io
+federatedjobs.types.kubefed.io
+federatednamespaces.types.kubefed.io
+federatedreplicasets.types.kubefed.io
+federatedsecrets.types.kubefed.io
+federatedserviceaccounts.types.kubefed.io
+federatedservices.types.kubefed.io
+federatedservicestatuses.core.kubefed.io
+federatedtypeconfigs.core.kubefed.io
+ingressdnsrecords.multiclusterdns.kubefed.io
+kubefedclusters.core.kubefed.io
+kubefedconfigs.core.kubefed.io
+propagatedversions.core.kubefed.io
+replicaschedulingpreferences.scheduling.kubefed.io
+servicednsrecords.multiclusterdns.kubefed.io
+</code></pre></div></div>
+
+<h3 id="create-a-local-namespace-on-the-host-cluster">Create a local namespace on the host cluster</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+</span><span class="no">EOF
+
+</span>namespace/test created
+</code></pre></div></div>
+
+<h3 id="create-a-federated-namespace">Create a federated namespace</h3>
+<p>The local <em>ns</em>, and the federated <em>ns</em> should match in name</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: types.kubefed.io/v1beta1
+kind: FederatedNamespace
+metadata:
+  name: test
+  namespace: test
+spec:
+  placement:
+    clusters:
+    - name: cluster1
+    - name: cluster2
+</span><span class="no">EOF
+
+</span>federatednamespace.types.kubefed.io/test created
+</code></pre></div></div>
+
+<h3 id="create-a-federated-deployment">Create a federated deployment</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f - 
+apiVersion: types.kubefed.io/v1beta1
+kind: FederatedDeployment
+metadata:
+  name: test
+  namespace: test
+spec:
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+          - image: nginx
+            name: nginx
+  placement:
+    clusters:
+    - name: cluster2
+    - name: cluster1
+  overrides:
+  - clusterName: cluster2
+    clusterOverrides:
+    - path: "/spec/replicas"
+      value: 5
+    - path: "/spec/template/spec/containers/0/image"
+      value: "nginx:1.17.0-alpine"
+    - path: "/metadata/annotations"
+      op: "add"
+      value:
+        foo: bar
+</span><span class="no">EOF
+
+</span>federateddeployment.types.kubefed.io/test created
+</code></pre></div></div>
+
+<h2 id="verify-federation-worked">Verify federation worked</h2>
+<p>Notice that the number of replicas is different in each cluster. This is because an override was part of the template. The template also had overrides for the container image and added an annotation as well.  This ability to finely control what objects get placed where in your federation is powerful.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl <span class="nt">--context</span> nick1-cluster1 <span class="nt">-n</span> <span class="nb">test </span>get deployments
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+<span class="nb">test   </span>3/3     3            3           5m
+
+<span class="nv">$ </span>kubectl <span class="nt">--context</span> nick2-cluster2 <span class="nt">-n</span> <span class="nb">test </span>get deployments
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+<span class="nb">test   </span>5/5     5            5           5m11s
+</code></pre></div></div>
+
+<h3 id="cleaning-up">Cleaning up</h3>
+<p>The safest way to clean up all resources is to simply delete the namespace on the host cluster. This will trigger the deletion process on the member clusters of the namespace, and all objects living within it. This process takes longer than creation, and this is where I have run into issues with KubeFed, and I recognize that it is still an <em>alpha</em> feature set.  I have had the deletion process hang, especially when I tried to delete a large number of objects.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl delete ns/test
+namespace <span class="s2">"test"</span> deleted
+
+<span class="nv">$ </span>kubectl <span class="nt">--context</span> nick2-cluster2 <span class="nt">-n</span> <span class="nb">test </span>get deployments
+No resources found.
+</code></pre></div></div>
+<h2 id="dns">DNS</h2>
+<p>I will not discuss DNS in this post, but be aware that KubeFed supports both ingress and service objects which can dynamically be added into your DNS records. For example, in a High Availability/DR scenario where you have the same application running on several clusters scattered around the world.  Each cluster would add a DNS entry into the top-level CNAME/alias for the app.  If you use Route53, you could also leverage latency-based routing.  If a cluster fails, or a new one is created with the same type of federated resources, the appropriate ingress/service records will be dynamically updated into the master DNS name.</p>
+
+<p>This feature relies heavily on <a href="https://github.com/kubernetes-incubator/external-dns">External DNS</a>, an excellent kubernetes project, which integrates K8 DNS into a global provider.</p>
+
+<hr />
+
+<h3 id="other-options">Other options</h3>
+<p>The idea of federation has been growing for some time within the Kubernetes community. It used to be that an enterprise would have a single large K8 cluster, or perhaps a small number of them at best.  Now, it is common for enterprises to have dozens, if not hundreds of clusters. Federation allows for greater control at the very least, if not improved independence and flexibility of remote resources.  Since KubeFed is still <em>alpha</em>, there are numerous open-source and commercial offerings that allow for the same flexibility and level of control.  Here are a few of the more well-known alternatives.</p>
+
+<ol>
+  <li><a href="https://kubernetes.io/blog/2018/05/17/gardener/">SAP Gardener</a></li>
+  <li><a href="https://rancher.com/blog/2019/announcing-submariner-multi-cluster-kubernetes-networking/">Rancher Submariner</a></li>
+  <li><a href="https://github.com/banzaicloud/pipeline">Banzai Pipeline</a></li>
+  <li><a href="https://cloud.google.com/anthos/">Google Anthos</a></li>
+</ol>
+
+<p>Finally, if you do not need improved control, but simply want the ability to link your clusters together, one might want to consider a <em>service mesh</em> (i.e. Istio or AWS App Mesh).  A <em>mesh</em> will allow you to leverage pods running on remote clusters, like they were local.  The configuration overhead is currently high, but some of the products just mentioned can help with the setup.</p>
+
+<p><img src="/images/istio-mesh.png" alt="service mesh" /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+<p>The time for Federation seems to be upon us.  There are now numerous open-source and commercial offerings which allow for multi-cluster/multi-cloud architectures to easily be created.  Whether you need such features is still an open question, but the ability to do so robustly and in a scalable manner is rapidly becoming possible.</p>
+
+<p>I will follow up this post with more details and information regarding DNS and other aspects of Federation.  Please contact me at <em>nbrand@mac.com</em> if you have suggestions for additional topics to be addressed in this blog.</p>
+
+<hr />
+
+<h3 id="references">References</h3>
+
+<ol>
+  <li><a href="https://banzaicloud.com/blog/multi-cloud-fedv2/&quot;&gt;Federation v2 article on BanaziCloud">Banzai blog</a></li>
+  <li><a href="https://kubernetes.io/blog/2018/12/12/kubernetes-federation-evolution/">Evolution of Federation</a></li>
+  <li><a href="https://github.com/kairen/aws-k8s-federation">Demo guide</a></li>
+  <li><a href="https://github.com/kubernetes-sigs/kubefed">KubeFed github</a></li>
+  <li><a href="https://github.com/kubernetes-sigs/kubefed/blob/master/charts/kubefed/README.md">KubeFed Helm Charts</a></li>
+  <li><a href="https://github.com/kubernetes-sigs/kubefed/blob/master/docs/cluster-registration.md">KubeFed Cluster Registration</a></li>
+</ol>
+:ET
