@@ -2,7 +2,7 @@ task default: %w[build deploy]
 
 task :build do
   puts "Building static web site using jekyll generator"
-  `jekyll build`
+  `bundle exec jekyll build`
 end
 
 task :deploy do
@@ -12,6 +12,6 @@ task :deploy do
 end
 
 task :web do
-  `jekyll serve`
+  `bundle exec jekyll serve`
 end
 
