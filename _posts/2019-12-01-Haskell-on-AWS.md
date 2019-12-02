@@ -197,7 +197,7 @@ The program worked well, and executed in less than 2 seconds. This is pretty fas
 
 However, since _amazonka_ is not an official AWS SDK, it tends to run behind AWS releases.  The author created an amazing library, but only updates it about once or twice a year. This can cause issues if you use some of the newer features or services. I came upon two issues myself, and there are probably more.
 1. The list of regions is not up to date in the latest 1.6.1 package.
-2. If once has newer instance types (t3 or i3 in my case), there may be a [run-time error](https://github.com/brendanhay/amazonka/issues/460).
+2. If one uses newer instance types (t3 or i3 in my case), there may be a [run-time error](https://github.com/brendanhay/amazonka/issues/460).
 
 There are ways around this. One can clone the library, and make improvement on your copy.  Feel free to push pull requests upstream. Or, you can create your own [client](https://aws.amazon.com/blogs/messaging-and-targeting/ses-and-haskell/). None of these solutions are ideal, but none of them are too difficult either.
 
