@@ -2,7 +2,7 @@
 layout: post
 title:  "Goodbye Joe Armstrong"
 date:   2019-04-29 08:00:00 -0400
-categories: [aws elixir]
+categories: elixir
 ---
 ![Erlang logo](/images/erlang.jpg)
 
