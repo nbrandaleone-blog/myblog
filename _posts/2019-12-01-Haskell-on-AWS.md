@@ -193,7 +193,7 @@ $ stack exec ec2-demo-exe
 ```
 
 ## Issues
-The program worked well, and executed in less than 2 seconds. This is pretty fast considering there are now over 20 AWS regions. Also, did you notice that we did not to worry about _mutex_ locks, or any other asynchronous magi?! Pretty cool!
+The program worked well, and executed in less than 2 seconds. This is pretty fast considering there are now over 20 AWS regions. Also, did you notice that we did not need to worry about _mutex_ locks, or any other asynchronous magic?! Pretty cool!
 
 However, since _amazonka_ is not an official AWS SDK, it tends to run behind AWS releases.  The author created an amazing library, but only updates it about once or twice a year. This can cause issues if you use some of the newer features or services. I came upon two issues myself, and there are probably more.
 1. The list of regions is not up to date in the latest 1.6.1 package.
