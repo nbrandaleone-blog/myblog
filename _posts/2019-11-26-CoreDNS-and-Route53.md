@@ -2,7 +2,7 @@
 layout: post
 title:  "CoreDNS and Route53"
 date:   2019-11-26 08:00:00 -0400
-categories: aws eks dns
+categories: aws
 ---
 ![coreDNS logo](/images/coredns.png)
 
