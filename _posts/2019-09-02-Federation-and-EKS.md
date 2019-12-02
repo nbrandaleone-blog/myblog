@@ -2,7 +2,7 @@
 layout: post
 title:  "Federation v2 and EKS"
 date:   2019-09-02 08:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 ![Scheduler Diagram](/images/fedv2.png)
 

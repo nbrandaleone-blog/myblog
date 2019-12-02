@@ -2,7 +2,7 @@
 layout: post
 title:  "Custom Kubernetes Schedulers"
 date:   2019-08-21 08:00:00 -0400
-categories: aws elixir
+categories: aws elixir kubernetes
 ---
 ![Scheduler Diagram](/images/k8-scheduler.png)
 

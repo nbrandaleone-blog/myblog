@@ -2,7 +2,7 @@
 layout: post
 title:  "Elastic Kubernetes Service and roles on AWS"
 date:   2018-06-24 21:09:01 -0500
-categories: aws
+categories: aws kubernetes
 ---
 ![IAM authentication](/images/authenticator.png)
 A few weeks ago AWS released EKS or their managed Elastic Kubernetes Service. What is amazing, is that it **IS** Kubernetes (version 1.10).  Of course, there are some AWS subleties. The most significant are:

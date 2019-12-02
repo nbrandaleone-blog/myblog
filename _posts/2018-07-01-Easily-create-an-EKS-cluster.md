@@ -2,7 +2,7 @@
 layout: post
 title:  "How to easily create an EKS cluster"
 date:   2018-07-01 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 ![EKS cluster creation](/images/what-is-eks.png)
 

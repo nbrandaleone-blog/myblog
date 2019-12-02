@@ -2,7 +2,7 @@
 layout: post
 title:  "Don't Do This!"
 date:   2018-10-09 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 ![EKS authentications](/images/authenticator.png)
 

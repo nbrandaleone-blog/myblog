@@ -2,7 +2,7 @@
 layout: post
 title:  "Verifying EKS digital certificates"
 date:   2018-08-16 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 ![TLS flow](/images/tls-flow.png)
 

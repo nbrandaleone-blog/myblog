@@ -2,7 +2,7 @@
 layout: post
 title:  "Haskell on AWS"
 date:   2019-12-01 08:00:00 -0400
-categories: aws
+categories: aws haskell
 ---
 ![haskell logo](/images/haskell-logo.svg)
 

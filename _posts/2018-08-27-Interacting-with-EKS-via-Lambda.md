@@ -2,7 +2,7 @@
 layout: post
 title:  "Interacting with EKS via Lambda"
 date:   2018-09-03 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 ![EKS authentications](/images/authenticator.png)
 

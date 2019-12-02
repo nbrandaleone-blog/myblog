@@ -2,7 +2,7 @@
 layout: post
 title:  "Deploy cluster-level logging on Amazon EKS clusters using Fluentd and Amazon CloudWatch Logs"
 date:   2019-03-10 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 <details>
 <summary><strong>Guest author</strong></summary>

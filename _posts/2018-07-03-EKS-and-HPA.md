@@ -2,7 +2,7 @@
 layout: post
 title:  "EKS and Horizontal Pod Autoscaler"
 date:   2018-07-03 09:00:00 -0400
-categories: aws
+categories: aws kubernetes
 ---
 <details>
 <summary><strong>HPA is now working with EKS!</strong></summary>
