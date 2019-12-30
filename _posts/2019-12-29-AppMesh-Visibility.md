@@ -144,7 +144,7 @@ environment: {
     CW_CONFIG_CONTENT: '{ "logs": { "metrics_collected": {"emf": {} }}, "metrics": { "metrics_collected": { "statsd": {}}}}'
 ```
 
-Now that the data is being streamed into CloudWatch, we simply have to decide how we want to visualize/represent it.  Some sort of dashboard or graphical interface is usually the most choice, once you decide what metrics you should focus on.
+Now that the data is being streamed into CloudWatch, we simply have to decide how we want to visualize/represent it.  Some sort of dashboard or graphical interface is usually the best choice, once you decide what metrics you should focus on.
 
 ## Using CloudWatch
 Now that all the metrics are streaming into CloudWatch, we can view the logs and visualize the data.
