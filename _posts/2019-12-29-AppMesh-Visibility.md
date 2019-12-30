@@ -9,7 +9,7 @@ categories: aws service_mesh
 
 ![envoy stats](/images/envoy-stats.png)
 
-There are many advantages of using Service Meshes. One of the greatest is the increased visibility they can provide. AWS App Mesh leverages Envoy for its data plane. Each envoy proxy generates local [statistics](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/statistics#arch-overview-statistics) describing the network environment it is embedded into. Envoy originally only supported the TCP and UDP [statsD](https://github.com/b/statsd_spec) protocol for exporting its statistics. statsd is an incredibly simple but very widely supported transport format. Currently, Envoy also supports Prometheus endpoints as well.
+There are many advantages of using Service Meshes. One of the greatest is the increased visibility they can provide. AWS App Mesh leverages Envoy for its data plane. Each envoy proxy generates local [statistics](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/statistics#arch-overview-statistics) describing the network environment it is embedded into. Envoy originally only supported the TCP and UDP [statsD](https://github.com/b/statsd_spec) protocol for exporting its statistics. statsD is an incredibly simple but very widely supported transport format. Currently, Envoy also supports Prometheus endpoints as well.
 
 One of the advantage of statsD, is that this format is easily consumed by a [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html). This agent can then forward these stats to CloudWatch, allowing for dashboards, alarms and so on. This approach is demonstrated by the [2019 ReInvent talk - CON328, Improving observability of your containers](https://www.youtube.com/embed/O1NQrIm_4cg).
 
@@ -153,11 +153,22 @@ Now that the data is being streamed into CloudWatch, we simply have to decide ho
 ## Using CloudWatch
 Now that all the metrics are streaming into CloudWatch, we can view the logs and visualize the data.
 I have built a sample dashboard, which graphs various metrics from Envoy.  [Envoy](https://blog.envoyproxy.io/envoy-stats-b65c7f363342) generates a lot of [statistics](https://www.envoyproxy.io/docs/envoy/v1.5.0/configuration/http_conn_man/stats),
-so I focused only on the following most important fields. First, a little clarification on some vocabularly that Envoy uses.
+so I focused only on the following most important fields. First, a little clarification on some [vocabulary](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/intro/terminology) that Envoy uses.
 
-> upstream: - the direction where Envoy sends requests. Typically a web or application server.
 
-> downstream: - the direction where Envoy receives a network connection or request. Most often a web client.
+> Host: An entity capable of network communication (application on a mobile phone, server, etc.). In this documentation a host is a logical network application. A physical piece of hardware could possibly have multiple hosts running on it as long as each of them can be independently addressed.
+
+> Downstream: A downstream host connects to Envoy, sends requests, and receives responses.
+
+> Upstream: An upstream host receives connections and requests from Envoy and returns responses.
+
+> Listener: A listener is a named network location (e.g., port, unix domain socket, etc.) that can be connected to by downstream clients. Envoy exposes one or more listeners that downstream hosts connect to.
+
+> Cluster: A cluster is a group of logically similar upstream hosts that Envoy connects to. Envoy discovers the members of a cluster via service discovery. It optionally determines the health of cluster members via active health checking.
+
+> Mesh: A group of hosts that coordinate to provide a consistent network topology. In this documentation, an “Envoy mesh” is a group of Envoy proxies that form a message passing substrate for a distributed system comprised of many different services and application platforms.
+
+> Runtime configuration: Out of band realtime configuration system deployed alongside Envoy. Configuration settings can be altered that will affect operation without needing to restart Envoy or change the primary configuration.
 
 > Counters: - Unsigned integers that only increase and never decrease. E.g., total requests.
 
@@ -183,9 +194,11 @@ If you open up your CloudWatch tab of your AWS Console, you will find a new Dash
 The name is dynamic, but should start with "cloudwatchdashboardappmesh...".
 
 This dashboard shows some of more useful metrics that is gathered from Envoy, along with information retrieved from your Application Load Balancer.
-As mentioned, Envoy generates a tremendous amount of useful metrics on your application.  This dashboard is only an example, and it is quite likely that you would build out yours differently than mine.
+As mentioned, Envoy generates a tremendous amount of useful metrics on your application.  This dashboard is only an example, and it is quite likely that you would build out yours differently than mine. Here is what [Matt Klein](https://blog.envoyproxy.io/lyfts-envoy-dashboards-5c91738816b1) from Lyft [uses](https://github.com/mattklein123/lyft_envoy_dashboards/blob/master/envoy_stats.sls).
 
 ![CloudWatch Dashboard](/images/cw-dashboard.png)
+
+*NOTE: [**Metric Math**](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/using-metric-math.html#metric-math-syntax) is not yet [available](https://github.com/aws/aws-cdk/issues/1077) for CDK.  Once it is, these envoy statistics will become even more powerful. Until them, if you wish to use **Metric Math**, one can build out Dashboards using CloudFormation or manually.*
 
 ### CloudWatch Logs Insights
 *I do not think this should be mentioned, since it parses logs, not metrics*
@@ -208,7 +221,7 @@ There are [several](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitori
 2. We can implement a daemon set, or a single cloudwatch-agent collector for the Kubernetes/EKS clusters (using statsD).
 3. We can use Prometheus, which scapes metrics from the envoy proxies.  We can then configure Prometheus to [export](https://github.com/prometheus/cloudwatch_exporter) the gathered stats to CloudWatch.
 
-In the spirit of replicating the ECS set-up as close as possible, we are going to use option #1. Also, we will use [helm](https://helm.sh/) almost exclusivey for our Kubernetes package installation and management.
+In the spirit of replicating the ECS set-up as close as possible, we are going to use option #1. Also, we will use [Helm](https://helm.sh/) almost exclusivey for our Kubernetes package installation and management.
 
 *Add diagram*
 
