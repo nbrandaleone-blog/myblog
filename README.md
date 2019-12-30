@@ -12,6 +12,10 @@
 4) To create new page. Go into _posts.
 	https://jekyllrb.com/docs/posts/
 
+5) If creating a draft post, put it in _drafts.
+bundle exec jekyll build --drafts
+bundle exec jekyll serve --drafts
+
 # Git commands
 git push origin master
 git pull
