@@ -11,7 +11,7 @@ categories: aws service_mesh
     this is a an html comment. It works for Jekyl, but not for other tools, such as MacDown or Pandoc.
 	See: https://www.bytedude.com/jekyll-syntax-highlighting-and-line-numbers/
 -->
-There are many advantages of using Service Meshes. One of the greatest is the increased visibility they can provide. AWS App Mesh leverages Envoy for its data plane. Each envoy proxy generates local [statistics](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/statistics#arch-overview-statistics) describing the network environment it is embedded into. Envoy originally only supported the TCP and UDP [statsD](https://github.com/b/statsd_spec) protocol for exporting its statistics. statsD is an incredibly simple but very widely supported transport format. Currently, Envoy also supports Prometheus endpoints as well.
+There are many advantages of using Service Meshes. One of the greatest is the increased visibility they can provide. AWS App Mesh leverages Envoy for its data plane. Each envoy proxy generates local [statistics](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/statistics#arch-overview-statistics) describing the network environment it is embedded into. Envoy originally only supported the TCP and UDP [statsD](https://github.com/b/statsd_spec) protocol for exporting its statistics; currently, Envoy also supports Prometheus endpoints as well. statsD is an incredibly simple but very widely supported transport format. 
 
 One of the advantage of statsD, is that this format is easily consumed by a [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html). This agent can then forward these stats to CloudWatch, allowing for dashboards, alarms and so on. This approach is demonstrated by the [2019 ReInvent talk - CON328, Improving observability of your containers](https://www.youtube.com/embed/O1NQrIm_4cg).
 
@@ -178,43 +178,7 @@ $ aws servicediscovery list-services --output table
 ||+-------------------------------------------------------------------------+------------------+||
 ||                                           Services                                           ||
 |+------------+---------------------------------------------------------------------------------+|
-||  Arn       |  arn:aws:servicediscovery:us-west-2:<account ID>:service/srv-epfwydhg35bxpawy   ||
-||  CreateDate|  1577741692.105                                                                 ||
-||  Id        |  srv-epfwydhg35bxpawy                                                           ||
-||  Name      |  greeter                                                                        ||
-|+------------+---------------------------------------------------------------------------------+|
-|||                                          DnsConfig                                         |||
-||+--------------------------------------------------+-----------------------------------------+||
-|||  RoutingPolicy                                   |  MULTIVALUE                             |||
-||+--------------------------------------------------+-----------------------------------------+||
-||||                                        DnsRecords                                        ||||
-|||+---------------------------------------------------+--------------------------------------+|||
-||||  TTL                                              |  60                                  ||||
-||||  Type                                             |  A                                   ||||
-|||+---------------------------------------------------+--------------------------------------+|||
-|||                                   HealthCheckCustomConfig                                  |||
-||+-------------------------------------------------------------------------+------------------+||
-|||  FailureThreshold                                                       |  2               |||
-||+-------------------------------------------------------------------------+------------------+||
-||                                           Services                                           ||
-|+------------+---------------------------------------------------------------------------------+|
-||  Arn       |  arn:aws:servicediscovery:us-west-2:<account ID>:service/srv-uuuwrr6ql7tguthp   ||
-||  CreateDate|  1577741686.165                                                                 ||
-||  Id        |  srv-uuuwrr6ql7tguthp                                                           ||
-||  Name      |  greeting                                                                       ||
-|+------------+---------------------------------------------------------------------------------+|
-|||                                          DnsConfig                                         |||
-||+--------------------------------------------------+-----------------------------------------+||
-|||  RoutingPolicy                                   |  MULTIVALUE                             |||
-||+--------------------------------------------------+-----------------------------------------+||
-||||                                        DnsRecords                                        ||||
-|||+---------------------------------------------------+--------------------------------------+|||
-||||  TTL                                              |  60                                  ||||
-||||  Type                                             |  A                                   ||||
-|||+---------------------------------------------------+--------------------------------------+|||
-|||                                   HealthCheckCustomConfig                                  |||
-||+-------------------------------------------------------------------------+------------------+||
-|||  FailureThreshold                                                       |  2               |||
+...
 ||+-------------------------------------------------------------------------+------------------+||
 ```
 
