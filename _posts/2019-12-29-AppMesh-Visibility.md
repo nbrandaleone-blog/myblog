@@ -5,10 +5,12 @@ date:   2019-12-29 08:00:00 -0400
 categories: aws service_mesh
 ---
 
-# DRAFT ~~Increased visibilty via App Mesh~~ DRAFT
-
+# **DRAFT** ~~Increased visibilty via App Mesh~~ **DRAFT**
 ![envoy stats](/images/envoy-stats.png)
-
+<!--
+    this is a an html comment. It works for Jekyl, but not for other tools, such as MacDown or Pandoc.
+	See: https://www.bytedude.com/jekyll-syntax-highlighting-and-line-numbers/
+-->
 There are many advantages of using Service Meshes. One of the greatest is the increased visibility they can provide. AWS App Mesh leverages Envoy for its data plane. Each envoy proxy generates local [statistics](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/statistics#arch-overview-statistics) describing the network environment it is embedded into. Envoy originally only supported the TCP and UDP [statsD](https://github.com/b/statsd_spec) protocol for exporting its statistics. statsD is an incredibly simple but very widely supported transport format. Currently, Envoy also supports Prometheus endpoints as well.
 
 One of the advantage of statsD, is that this format is easily consumed by a [CloudWatch agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html). This agent can then forward these stats to CloudWatch, allowing for dashboards, alarms and so on. This approach is demonstrated by the [2019 ReInvent talk - CON328, Improving observability of your containers](https://www.youtube.com/embed/O1NQrIm_4cg).
@@ -20,7 +22,6 @@ This blog post will demonstrate how to enable statsD for your App Mesh data plan
 In order to quickly show this approach, I have created a Cloud Development Kit or [CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html) template of a working containerized, micro-serviced based application running on ECS, along with a CloudWatch dashboard. I will assume you have CDK installed, and some familiarity with the tooling.  Under the hood, CDK generates CloudFormation, but is much more powerful and terse. It allow one to use a general-purpose programming language to create your CloudFormation templates (i.e. JavaScript, TypeScript, Python, Java, and C#)
 
 ## Let CDK do all the work
-
 Clone the demo git repository. This repo has been tested in `us-west-2`, but should work in any region with only minor changes.
 
 ``` bash
@@ -34,7 +35,6 @@ $ # wait about 10 minutes...
 ```
 
 ### The architecture
-
 The application is based upon three micro-services (two tasks each).  The *greeter* must get a *greeting* and a *name*.
 * [nathanpeck/greeter](https://hub.docker.com/r/nathanpeck/greeter/) - Constructs a random greeting phrase from a greeting and a name.
 * [nathanpeck/greeting](https://hub.docker.com/r/nathanpeck/greeting/) - Returns a random greeting
@@ -76,7 +76,6 @@ After a few minutes, go to your CloudWatch / Metrics console.  You will see a ne
 ![envoy stats in CW](/images/600-metrics.png)
 
 ### Configuration and Settings
-
 There are several configuration settings that must be accomplished in order to get the telemetry data flowing into CloudWatch. They are:
 
 1. Configure your [Task definition](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#proxyConfiguration) to use a special setting called *proxyConfiguration*. This *proxyConfiguration* sets up the network routing between the containers, so that all traffic is routed throught the envoy proxy on its way way in and out of the Task. For CDK, the [code](https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-ecs.AppMeshProxyConfiguration.html) for the *proxyConfiguration* looks like this:
@@ -148,15 +147,81 @@ environment: {
     CW_CONFIG_CONTENT: '{ "logs": { "metrics_collected": {"emf": {} }}, "metrics": { "metrics_collected": { "statsd": {}}}}'
 ```
 
-Now that the data is being streamed into CloudWatch, we simply have to decide how we want to visualize/represent it.  Some sort of dashboard or graphical interface is usually the best choice, once you decide what metrics you should focus on.
+#### DNS
+App Mesh relies heavily on DNS or [Cloud Map](https://aws.amazon.com/cloud-map/) to resolve virtual node endpoints.
+Fortunately, ECS integrates nicely with Cloud Map, and all our services have private DNS names.  Let's verify this:
+
+``` bash
+$ aws servicediscovery list-services --output table
+--------------------------------------------------------------------------------------------------
+|                                          ListServices                                          |
++------------------------------------------------------------------------------------------------+
+||                                           Services                                           ||
+|+------------+---------------------------------------------------------------------------------+|
+||  Arn       |  arn:aws:servicediscovery:us-west-2:<account ID>:service/srv-24raqotjvd34dfxj   ||
+||  CreateDate|  1577741692.171                                                                 ||
+||  Id        |  srv-24raqotjvd34dfxj                                                           ||
+||  Name      |  name                                                                           ||
+|+------------+---------------------------------------------------------------------------------+|
+|||                                          DnsConfig                                         |||
+||+--------------------------------------------------+-----------------------------------------+||
+|||  RoutingPolicy                                   |  MULTIVALUE                             |||
+||+--------------------------------------------------+-----------------------------------------+||
+||||                                        DnsRecords                                        ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+||||  TTL                                              |  60                                  ||||
+||||  Type                                             |  A                                   ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+|||                                   HealthCheckCustomConfig                                  |||
+||+-------------------------------------------------------------------------+------------------+||
+|||  FailureThreshold                                                       |  2               |||
+||+-------------------------------------------------------------------------+------------------+||
+||                                           Services                                           ||
+|+------------+---------------------------------------------------------------------------------+|
+||  Arn       |  arn:aws:servicediscovery:us-west-2:<account ID>:service/srv-epfwydhg35bxpawy   ||
+||  CreateDate|  1577741692.105                                                                 ||
+||  Id        |  srv-epfwydhg35bxpawy                                                           ||
+||  Name      |  greeter                                                                        ||
+|+------------+---------------------------------------------------------------------------------+|
+|||                                          DnsConfig                                         |||
+||+--------------------------------------------------+-----------------------------------------+||
+|||  RoutingPolicy                                   |  MULTIVALUE                             |||
+||+--------------------------------------------------+-----------------------------------------+||
+||||                                        DnsRecords                                        ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+||||  TTL                                              |  60                                  ||||
+||||  Type                                             |  A                                   ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+|||                                   HealthCheckCustomConfig                                  |||
+||+-------------------------------------------------------------------------+------------------+||
+|||  FailureThreshold                                                       |  2               |||
+||+-------------------------------------------------------------------------+------------------+||
+||                                           Services                                           ||
+|+------------+---------------------------------------------------------------------------------+|
+||  Arn       |  arn:aws:servicediscovery:us-west-2:<account ID>:service/srv-uuuwrr6ql7tguthp   ||
+||  CreateDate|  1577741686.165                                                                 ||
+||  Id        |  srv-uuuwrr6ql7tguthp                                                           ||
+||  Name      |  greeting                                                                       ||
+|+------------+---------------------------------------------------------------------------------+|
+|||                                          DnsConfig                                         |||
+||+--------------------------------------------------+-----------------------------------------+||
+|||  RoutingPolicy                                   |  MULTIVALUE                             |||
+||+--------------------------------------------------+-----------------------------------------+||
+||||                                        DnsRecords                                        ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+||||  TTL                                              |  60                                  ||||
+||||  Type                                             |  A                                   ||||
+|||+---------------------------------------------------+--------------------------------------+|||
+|||                                   HealthCheckCustomConfig                                  |||
+||+-------------------------------------------------------------------------+------------------+||
+|||  FailureThreshold                                                       |  2               |||
+||+-------------------------------------------------------------------------+------------------+||
+```
 
 ## Using CloudWatch
 Now that all the metrics are streaming into CloudWatch, we can view the logs and visualize the data.
 I have built a sample dashboard, which graphs various metrics from Envoy.  [Envoy](https://blog.envoyproxy.io/envoy-stats-b65c7f363342) generates a lot of [statistics](https://www.envoyproxy.io/docs/envoy/v1.5.0/configuration/http_conn_man/stats),
 so I focused only on the following most important fields. First, a little clarification on some [vocabulary](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/intro/terminology) that Envoy uses.
-
-
-> Host: An entity capable of network communication (application on a mobile phone, server, etc.). In this documentation a host is a logical network application. A physical piece of hardware could possibly have multiple hosts running on it as long as each of them can be independently addressed.
 
 > Downstream: A downstream host connects to Envoy, sends requests, and receives responses.
 
@@ -165,10 +230,6 @@ so I focused only on the following most important fields. First, a little clarif
 > Listener: A listener is a named network location (e.g., port, unix domain socket, etc.) that can be connected to by downstream clients. Envoy exposes one or more listeners that downstream hosts connect to.
 
 > Cluster: A cluster is a group of logically similar upstream hosts that Envoy connects to. Envoy discovers the members of a cluster via service discovery. It optionally determines the health of cluster members via active health checking.
-
-> Mesh: A group of hosts that coordinate to provide a consistent network topology. In this documentation, an “Envoy mesh” is a group of Envoy proxies that form a message passing substrate for a distributed system comprised of many different services and application platforms.
-
-> Runtime configuration: Out of band realtime configuration system deployed alongside Envoy. Configuration settings can be altered that will affect operation without needing to restart Envoy or change the primary configuration.
 
 > Counters: - Unsigned integers that only increase and never decrease. E.g., total requests.
 
@@ -188,8 +249,6 @@ so I focused only on the following most important fields. First, a little clarif
 | upstream_rq_ | ... | ... |
 
 ### The Dashboard
-*Improve dashboard by adding additional metrics, and cleaning up visual appearance*
-
 If you open up your CloudWatch tab of your AWS Console, you will find a new Dashboard.
 The name is dynamic, but should start with "cloudwatchdashboardappmesh...".
 
@@ -201,10 +260,13 @@ As mentioned, Envoy generates a tremendous amount of useful metrics on your appl
 *NOTE: [**Metric Math**](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/using-metric-math.html#metric-math-syntax) is not yet [available](https://github.com/aws/aws-cdk/issues/1077) for CDK.  Once it is, these envoy statistics will become even more powerful. Until them, if you wish to use **Metric Math**, one can build out Dashboards using CloudFormation or manually.*
 
 ### CloudWatch Logs Insights
-*I do not think this should be mentioned, since it parses logs, not metrics*
-*Perhaps just mentioned as another telemetry tool.  It would require container insights installed on cluster*
+CloudWatch [Logs Insight](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html) is an amazing tool.  It allows you to parse through a mountain of logs using a powerful SQL-like syntax. What is also impressive, is that it will create graphs of the search terms you are looking for. Also, since *container insights* embeds performance data into logs, you have yet another way to analyze your containers health. See this helpful [blog](https://aws.amazon.com/blogs/mt/introducing-container-insights-for-amazon-ecs/) post to get you going.
 
-![cloudwatch insights](/images/cw-insights.png)
+We can use Logs Insights to parse through our Envoy logs as well. Every envoy proxy can log data into Cloudwatch Logs. To export only the Envoy access logs (and ignore the other Envoy container logs), you can set the ENVOY_LOG_LEVEL to [off](https://docs.aws.amazon.com/app-mesh/latest/userguide/envoy.html).
+
+For example, I did a quick review of all my envoy logs to see if there were any HTTP 503 errors.  I only found a handful, but I could imagine how useful this could be in investigating networking issues.
+
+![cloudwatch logs insights](/images/./cw-loginsights-503errors.png)
 
 ### Clean up your ECS cluster
 Don't forget to tear down your infrastructure to save money.
@@ -286,7 +348,7 @@ $ helm upgrade -i appmesh-controller eks/appmesh-controller \
 
 ###  Install the App Mesh admission controller
 We are **NOT** going to use the admissions controller/injector for this part of the tutorial. Why you ask? Well, the injector will add the appropriate
-*App Mesh* envoy container to your application container automatically.  While this is a great help to the average developer working on Kubernetes, it will create issues when we go to add yet another sidexcar. In an effort to better control all these sidecars, their dependencies, start-up order and so on, I will create the full pod/deployment templates without any auto-injector magic.
+*App Mesh* envoy container to your application container automatically.  While this is a great help to the average developer working on Kubernetes, it will create issues when we go to add yet another sidecar. In an effort to better control all these sidecars, their dependencies, start-up order and so on, I will create the full pod/deployment templates without any auto-injector magic.
 
 We will still install the controller, since it does have a knob which will create the App Mesh for us.  Also, you may wish to experiment with it on another namespace.
 ```
@@ -307,7 +369,6 @@ $ # Install App Mesh Grafana:
 $ helm upgrade -i appmesh-prometheus eks/appmesh-grafana \
 --namespace appmesh-system 
 ```
-<img src="/images/appmesh-logo.svg" align="right" width="250" height="250">
 
 ### Install the sample application
 Also, review components...
@@ -318,7 +379,7 @@ Also, review components...
 ### Clean up EKS cluster
 
 ## Summary
-
+<img src="/images/appmesh-logo.svg" align="right" width="250" height="250">
 Just to recap, we have seen how to leverage App Mesh in order to get increased visibility into
 all the networking stats produced by the envoy proxies.  We have forwarded these metrics to CloudWatch, where we can easily build a Dashboard for increased awareness regarding our application. While this does require some work to set-up and configure, it is essentially free data that we can utilize simply by using App Mesh. CDK can also make the set-up considerably easier than in the past. 
 
@@ -342,7 +403,6 @@ Finally, you should definitely check out this new CloudWatch service, [**Service
 ***
 
 ## References
-
 * Using [CloudWatch Agent and StatsD](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-custom-metrics-statsd.html)
 * Nathan Peck's [greeter application](https://github.com/nathanpeck/greeter-app-mesh-cdk/blob/master/README.md) written in CDK and leveraging App Mesh
 * Tony Pujals ColorTeller [app](https://github.com/subfuzion/enable-appmesh) in Console and CDK
