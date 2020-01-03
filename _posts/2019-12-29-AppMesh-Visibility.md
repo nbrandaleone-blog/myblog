@@ -261,7 +261,8 @@ Check out this container built for App Mesh [data export](https://hub.docker.com
 
 For this Kuberntes demo, we will set-up option #3. This set-up is very lightweight, since a sidecar per pod is not required. We will use [Helm](https://helm.sh/) exclusivey for our Kubernetes package installation and management.
 
-It is worth noting that there are many commercial monitoring options as well. Some vendors include: [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), New Relic, [AppDynamics](https://www.appdynamics.com/blog/product/mesh-technology-advances-aid-enterprise/), [Dynatrace](https://www.dynatrace.com/platform/cloud-infrastructure-monitoring/), [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
+It is worth noting that there are many commercial monitoring options as well. Some vendors include:
+[WeaveWorls](https://www.weave.works/product/cloud/), [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), [New Relic](https://newrelic.com/), [AppDynamics](https://www.appdynamics.com/blog/product/mesh-technology-advances-aid-enterprise/), [Dynatrace](https://www.dynatrace.com/platform/cloud-infrastructure-monitoring/), [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
 [WaveFront](https://docs.wavefront.com/aws_appmesh.html),
 [Sysdig](https://sysdig.com/blog/visibility-and-security-for-aws-app-mesh/) and others.
  
