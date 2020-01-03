@@ -241,30 +241,30 @@ $ npx cdk@1.19.0 destroy
 ***
 
 ## Kubernetes and EKS
-We are going to deploy a different micro-service based application on an EKS cluster.
+We are going to deploy a different microservice based application on an EKS cluster.
 In terms of gathering statistics from our App Mesh based envoy proxies, we have more options using Kubernetes.
 
 There are [several](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-StatsD.html) different methods of forwarding the envoy statistics to CloudWatch or Prometheus.
 1. We can duplicate the sidecar pattern that we demonstrated for ECS (using statsD), and forward to CloudWatch.
 2. We can implement a daemon set, or a single cloudwatch-agent collector for the Kubernetes/EKS cluster (using statsD), and then forward to  CloudWatch.
 3. We can use Prometheus, which scapes metrics from the envoy proxies.  We can then optionally configure Prometheus to [export](https://github.com/prometheus/cloudwatch_exporter) the gathered stats into CloudWatch.
-4. Similar to #1, we can add a sidecar, but one that converts statsD metrics into Prometheus metrics. This has the advantage of using the native statsD metric exported by Envoy, but stored and made visibily by Prometheus/Grafana.  The standard Prometheus endpoint (option #3) for Envoy is missing some histogram data, making this option more metric **rich** than option #3.
+4. Similar to #1, we can add a sidecar, but one that converts statsD metrics into Prometheus metrics. This has the advantage of using the native statsD metric exported by Envoy, but stored and made visibily by Prometheus/Grafana.  At one time, Envoy's Prometheus endpoint (option #3) was missing some histogram data, making this option more metric rich than option #3. However, that issue has been [fixed](https://github.com/aws/aws-app-mesh-inject/issues/48), so this option is no longer relevant for App Mesh. Some other [vendors](https://www.datawire.io/faster/ambassador-prometheus/) still use this design.
 
-Here is the architecture of option four:
-```shell
- +----------------+                         +-------------------+                        +--------------+  
- |  Envoy StatsD  |---(UDP/TCP repeater)--->|  statsd_exporter  |<---(scrape /metrics)---|  Prometheus  |  
- +----------------+                         +-------------------+                        +--------------+  
-```
- 
-Check out this container built for App Mesh [data export](https://hub.docker.com/r/maddox/statsd-exporter) to Prometheus format. This is forked from the original [repo](https://github.com/prometheus/statsd_exporter). Also, here is a blog discussing a more sophisticated version of this [scenario](https://www.datawire.io/faster/ambassador-prometheus/) for a another Envoy based product.
+For this Kuberntes demo, we will set-up option #3. This configuration is very lightweight, since a sidecar per pod is not required. It also gives all the metrics we want while leveraging the most popular Kubernetes logging and dashboard solution available.
 
-For this Kuberntes demo, we will set-up option #3. This set-up is very lightweight, since a sidecar per pod is not required. We will use [Helm](https://helm.sh/) exclusivey for our Kubernetes package installation and management.
+We will use [Helm](https://helm.sh/) exclusivey for our Kubernetes package installation and management.
 
 It is worth noting that there are many commercial monitoring options as well. Some vendors include:
-[WeaveWorls](https://www.weave.works/product/cloud/), [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), [New Relic](https://newrelic.com/), [AppDynamics](https://www.appdynamics.com/blog/product/mesh-technology-advances-aid-enterprise/), [Dynatrace](https://www.dynatrace.com/platform/cloud-infrastructure-monitoring/), [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
-[WaveFront](https://docs.wavefront.com/aws_appmesh.html),
-[Sysdig](https://sysdig.com/blog/visibility-and-security-for-aws-app-mesh/) and others.
+* [WeaveWorks](https://www.weave.works/product/cloud/)
+* [DataDog](https://www.datadoghq.com/microservices/) 
+* [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/)
+* [Lightstep](https://lightstep.com/)
+* [New Relic](https://newrelic.com/)
+* [AppDynamics](https://www.appdynamics.com/blog/product/mesh-technology-advances-aid-enterprise/) 
+* [Dynatrace](https://www.dynatrace.com/platform/cloud-infrastructure-monitoring/) 
+* [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html)
+* [WaveFront](https://docs.wavefront.com/aws_appmesh.html)
+* [Sysdig](https://sysdig.com/blog/visibility-and-security-for-aws-app-mesh/)
  
 #### Demo Application
 The demo is a very simple, self-contained application consisting of two nginx pods, and three traffic generating pods.
