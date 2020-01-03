@@ -5,7 +5,7 @@ date:   2019-12-29 08:00:00 -0400
 categories: aws service_mesh
 ---
 
-# **DRAFT** Increased visibilty via App Mesh **DRAFT**
+# **DRAFT** Increased visibilty via App Mesh
 ![envoy stats](/images/envoy-stats.png)
 <!--
     this is a an html comment. It works for Jekyl, but not for other tools, such as MacDown or Pandoc.
@@ -238,20 +238,30 @@ Don't forget to tear down your infrastructure to save money.
 $ npx cdk@1.19.0 destroy
 ```
 
+***
+
 ## Kubernetes and EKS
 We are going to deploy a different micro-service based application on an EKS cluster.
 In terms of gathering statistics from our App Mesh based envoy proxies, we have more options using Kubernetes.
 
-There are [several](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-StatsD.html) different methods of forwarding the envoy statistics to CloudWatch.
-1. We can duplicate the sidecar pattern that we demonstrated for ECS (using statsD).
-2. We can implement a daemon set, or a single cloudwatch-agent collector for the Kubernetes/EKS cluster (using statsD).
+There are [several](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-StatsD.html) different methods of forwarding the envoy statistics to CloudWatch or Prometheus.
+1. We can duplicate the sidecar pattern that we demonstrated for ECS (using statsD), and forward to CloudWatch.
+2. We can implement a daemon set, or a single cloudwatch-agent collector for the Kubernetes/EKS cluster (using statsD), and then forward to  CloudWatch.
 3. We can use Prometheus, which scapes metrics from the envoy proxies.  We can then optionally configure Prometheus to [export](https://github.com/prometheus/cloudwatch_exporter) the gathered stats into CloudWatch.
+4. Similar to #1, we can add a sidecar, but one that converts statsD metrics into Prometheus metrics. This has the advantage of using the native statsD metric exported by Envoy, but stored and made visibily by Prometheus/Grafana.  The standard Prometheus endpoint (option #3) for Envoy is missing some histogram data, making this option more metric **rich** than option #3.
 
-Since Prometheus and Grafana are the most widely used open-source monitoring tool used by the Kubernetes comunity, we will set-up option #3. This set-up is very lightweight, since a sidecar per pod is not required. Also, we will use [Helm](https://helm.sh/) almost exclusivey for our Kubernetes package installation and management.
+Here is the architecture of option four:
+```shell
+ +----------------+                         +-------------------+                        +--------------+  
+ |  Envoy StatsD  |---(UDP/TCP repeater)--->|  statsd_exporter  |<---(scrape /metrics)---|  Prometheus  |  
+ +----------------+                         +-------------------+                        +--------------+  
+```
+ 
+Check out this container built for App Mesh [data export](https://hub.docker.com/r/maddox/statsd-exporter) to Prometheus format. This is forked from the original [repo](https://github.com/prometheus/statsd_exporter). Also, here is a blog discussing a more sophisticated version of this [scenario](https://www.datawire.io/faster/ambassador-prometheus/) for a another Envoy based product.
 
-**It may be better to use stats Exporter to Prometheus.  There will be richer metrics. Investigate!!**
+For this Kuberntes demo, we will set-up option #3. This set-up is very lightweight, since a sidecar per pod is not required. We will use [Helm](https://helm.sh/) exclusivey for our Kubernetes package installation and management.
 
-It is worth noting that there are many commercial monitoring options as well. Some vendors include: [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), New Relic, AppDynamics, Dynatrace, [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
+It is worth noting that there are many commercial monitoring options as well. Some vendors include: [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), New Relic, [AppDynamics](https://www.appdynamics.com/blog/product/mesh-technology-advances-aid-enterprise/), [Dynatrace](https://www.dynatrace.com/platform/cloud-infrastructure-monitoring/), [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
 [WaveFront](https://docs.wavefront.com/aws_appmesh.html),
 [Sysdig](https://sysdig.com/blog/visibility-and-security-for-aws-app-mesh/) and others.
  
@@ -267,13 +277,13 @@ Let's create an EKS cluster to work with. I am using the `us-east-2` region this
 ``` bash
 $ # You can skip this part if you already cloned the repository.
 $ git clone https://github.com/nbrandaleone/appmesh-visibility-cdk.git
-$ cd kubernetes
+$ cd appmesh-visibility-cdk
 
 $ eksctl create cluster --name=cluster-appmesh --nodes=2 --node-type=t3.xlarge --appmesh-access --region us-east-2 
 ```
 
 ### Install Helm charts
-We will use helm 3.x, since this simplifies the configuration as there is no longer a *tiller* component to install on the cluster. We will also add the official EKS repo, so we can easily install App Mesh components and Prometheus/Grafana using the appropriate charts.
+I recommend using helm 3.x, since this simplifies the configuration as there is no longer a *tiller* component to install on the cluster. We will also add the official EKS repo, so we can easily install App Mesh components and Prometheus/Grafana using the appropriate charts.
 
 Of course, if you want to add these component manually, see [here](https://docs.aws.amazon.com/eks/latest/userguide/mesh-k8s-integration.html) and [here](https://docs.aws.amazon.com/eks/latest/userguide/prometheus.html).
 
@@ -301,7 +311,7 @@ $ helm upgrade -i appmesh-controller eks/appmesh-controller --namespace appmesh-
 
 ####  Install the App Mesh [injector](https://github.com/aws/aws-app-mesh-inject/blob/master/INSTALL.md)
 We are going to use the admissions controller/injector for this part of the tutorial. The injector will add the appropriate
-*App Mesh* init and envoy containers to your pod automatically. It will also wire up the proper networking between the containers.  The injector is a great help in making App Mesh an easy experience for developers working on Kubernetes/EKS. Still, one must add the appropriate annotations and create the various mesh components (i.e. virtual service/routes and nodes) in the appropriate kubernetes yaml format.
+*App Mesh* init and envoy [sidecar](https://aws.amazon.com/blogs/containers/using-sidecar-injection-on-amazon-eks-with-aws-app-mesh/) to your pod automatically. It will also wire up the proper networking between the containers and add the `APPMESH_VIRTUAL_NODE_NAME` environmental variable to your pod.  The injector is a great help in making App Mesh an easy experience for developers working on Kubernetes/EKS. Still, one must add the appropriate annotations and create the various mesh components (i.e. virtual service/routes and nodes) via kubernetes templates.
 
 ```
 $ helm upgrade -i appmesh-inject eks/appmesh-inject \
@@ -351,7 +361,8 @@ $ helm upgrade -i appmesh-grafana eks/appmesh-grafana \
 
 ### Install the demo application
 ``` bash
-$ helm install --generate-name -n appmesh-demo ./aws-appmesh-demo
+$ # You must be in the root of the cloned directory
+$ helm install --generate-name -n appmesh-demo ./kubernetes
 ```
 
 ### Verify App Mesh and demo pods
@@ -368,34 +379,30 @@ virtualservices                appmesh.k8s.aws   true         VirtualService
 
 $ kubectl -n appmesh-demo get deploy,po,svc,virtualnode.appmesh.k8s.aws,virtualservice.appmesh.k8s.aws
 NAME                                   READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.extensions/load-generator   3/3     3            3           81s
-deployment.extensions/nginx            2/2     2            2           81s
+deployment.extensions/load-generator   3/3     3            3           22s
+deployment.extensions/nginx            2/2     2            2           22s
 
 NAME                                  READY   STATUS    RESTARTS   AGE
-pod/load-generator-57ccbfb5ff-25vzc   2/2     Running   1          81s
-pod/load-generator-57ccbfb5ff-4rb5p   2/2     Running   1          81s
-pod/load-generator-57ccbfb5ff-prl47   2/2     Running   1          81s
-pod/nginx-65c6c4788-l8xxb             2/2     Running   0          81s
-pod/nginx-65c6c4788-p85xz             2/2     Running   0          81s
+pod/load-generator-68c9646f97-bmqsd   2/2     Running   1          22s
+pod/load-generator-68c9646f97-q9dcw   2/2     Running   1          22s
+pod/load-generator-68c9646f97-vbljf   2/2     Running   1          22s
+pod/nginx-65c6c4788-4qt5l             2/2     Running   0          22s
+pod/nginx-65c6c4788-vnkj6             2/2     Running   0          22s
 
-NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
-service/nginx   ClusterIP   10.100.187.228   <none>        80/TCP    81s
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+service/nginx   ClusterIP   10.100.140.21   <none>        80/TCP    22s
 
 NAME                                         AGE
-virtualnode.appmesh.k8s.aws/load-generator   81s
-virtualnode.appmesh.k8s.aws/nginx            81s
+virtualnode.appmesh.k8s.aws/load-generator   22s
+virtualnode.appmesh.k8s.aws/nginx            22s
 
-NAME                                   AGE
-virtualservice.appmesh.k8s.aws/nginx   81s
+NAME                                                                  AGE
+virtualservice.appmesh.k8s.aws/nginx.appmesh-demo.svc.cluster.local   22s
 ```
 
 If you do not see `2/2` in the application pods READY section, you will need to do some troubleshooting.  Verify that the demo namespace is labeled, and that the appmesh-system namespace has all the components running as expected.
 
-1. test
-2. test
-
-### Review Grafana Dashboard
-*Should be similar results as ECS*
+### Review Grafana Dashboards
 We will connect to the dashboard via the port-forward command. This keeps the dashboard private and simplifies testing.
 
 ``` bash
@@ -406,10 +413,14 @@ $ # kubectl -n appmesh-system port-forward svc/appmesh-prometheus 9090:9090
 ```
 
 Now, open up a browser window to `localhost:127.0.0.1:3000`. There will be two Dashboards already created for you.
-1. ![grafana App Mesh control plane](/images/grafana-control-plane.png)
-2. ![grafana App Mesh data plane](/images/grafana-data-plane.png)
+The first Dashboard is for monitoring the App Mesh Control Plane that is running on your Kubernetes/EKS cluster.
+![grafana App Mesh control plane](/images/grafana-control-plane.png)
 
-*Add 6693*
+and the Envoy Data Plane
+![grafana App Mesh data plane](/images/grafana-data-plane.png)
+
+I also like to add a community Dasbhoard.  If you *import* 6693, you will get a nice Envoy Proxy dashboard.
+![envoy dashboard](/images/envoy-dashboard.png)
 
 ### Clean up EKS cluster
 ``` bash
@@ -423,11 +434,11 @@ $ eksctl delete cluster cluster-appmesh --region us-east-2
 ## Summary
 <img src="/images/appmesh-logo.svg" align="right" width="250" height="250">
 Just to recap, we have seen how to leverage App Mesh in order to get increased visibility into
-all the networking stats produced by the envoy proxies.  We have forwarded these metrics to CloudWatch, where we can easily build a Dashboard for increased awareness regarding our application. While this does require some work to set-up and configure, it is essentially free data that we can utilize simply by using App Mesh. CDK can also make the set-up considerably easier than in the past. 
+all the networking stats produced by the envoy proxies.  We have forwarded these metrics to CloudWatch or Prometheus, where we can easily build a Dashboard for increased awareness regarding our application. While this does require some work to set-up and configure, it is essentially free data that we can utilize simply by using App Mesh. CDK can also make the set-up considerably easier than in the past. 
 
 Although we have just scratched the service in terms of Envoy statistics, hopefully, you have found this post useful and interesting.
 
-Of course, it is always possible, and in many cases preferrable to use AWS X-Ray for increased visibility.  X-Ray provides a visual representation of traffic flowing between services which can invaluable during troubleshooting. This particular topic has been discussed multiple times. For example: see these blog posts and articles:
+Of course, it is always possible to leverage AWS X-Ray (or open-source Jaeger) for increased visibility as well.  X-Ray provides a visual representation of traffic flowing between services which can invaluable during troubleshooting. This particular topic has been discussed multiple times. For example: see these blog posts and articles:
 - [ReInvent 2018 slides on using X-ray with containers](https://www.slideshare.net/AmazonWebServices/instrumenting-kubernetes-for-observability-using-aws-xray-and-amazon-cloudwatch-dev303r2-aws-reinvent-2018)
 - [EKS workshop](https://eksworkshop.com/intermediate/245_x-ray/)
 - [App Mesh workshop](https://www.appmeshworkshop.com/x-ray/)
@@ -438,7 +449,7 @@ Also, a very easy way to get started with in-depth container and cluster statist
 
 ![Container Insights picture](/images/insights.png)
 
-Finally, you should definitely check out this new CloudWatch service, [**ServiceLens**](Appme-exter-Q7XDLJTVUQED-270012836.us-west-2.elb.amazonaws.com). It brings together numerous monitoring tools (i.e. CloudWatch logs and X-Ray) into a single location, while focusing on micro-services based application.  There is already a great [demo](https://github.com/lavignes/aws-app-mesh-examples/tree/service-lens/walkthroughs/howto-service-lens) on Github.  Check it out!
+Finally, you should definitely check out this new CloudWatch service, [**ServiceLens**](Appme-exter-Q7XDLJTVUQED-270012836.us-west-2.elb.amazonaws.com). It brings together numerous monitoring tools (i.e. CloudWatch logs and X-Ray) into a single location, while focusing on micro-services based application.  There is already a great [demo](https://github.com/lavignes/aws-app-mesh-examples/tree/service-lens/walkthroughs/howto-service-lens) on Github.
 
 ![CloudWatch ServiceLens](/images/ServiceMap.png)
 
