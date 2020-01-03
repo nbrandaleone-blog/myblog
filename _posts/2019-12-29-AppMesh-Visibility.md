@@ -249,7 +249,11 @@ There are [several](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitori
 
 Since Prometheus and Grafana are the most widely used open-source monitoring tool used by the Kubernetes comunity, we will set-up option #3. This set-up is very lightweight, since a sidecar per pod is not required. Also, we will use [Helm](https://helm.sh/) almost exclusivey for our Kubernetes package installation and management.
 
-It is worth noting that there are many commercial monitoring options as well. Some vendors include: [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [lightstep](https://lightstep.com/), New Relic, AppDynamics, Dynatrace, [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html) and others.
+**It may be better to use stats Exporter to Prometheus.  There will be richer metrics. Investigate!!**
+
+It is worth noting that there are many commercial monitoring options as well. Some vendors include: [DataDog](https://www.datadoghq.com/microservices/), [Instana](https://www.instana.com/blog/monitoring-envoy-proxy-microservices/), [Lightstep](https://lightstep.com/), New Relic, AppDynamics, Dynatrace, [SignalFx](https://docs.signalfx.com/en/latest/apm/apm-instrument/apm-service-mesh.html),
+[WaveFront](https://docs.wavefront.com/aws_appmesh.html),
+[Sysdig](https://sysdig.com/blog/visibility-and-security-for-aws-app-mesh/) and others.
  
 #### Demo Application
 The demo is a very simple, self-contained application consisting of two nginx pods, and three traffic generating pods.
@@ -277,37 +281,33 @@ Of course, if you want to add these component manually, see [here](https://docs.
 $ helm repo add eks https://aws.github.io/eks-charts
 ```
 
-### Install App Mesh components
+### Install App Mesh
 The next series of commands are documented in the Github [repo](https://github.com/aws/eks-charts) for the EKS helm charts.  There are additional commands and steps available that one might want to use. For example, there are examples on how to enable Jaeger tracing, Datadog tracing and AWS X-Ray. Check it out!
 
 Create the namespace *appmesh-system* for the App Mesh system components
 ``` bash
 $ kubectl create ns appmesh-system
 
-$ # create a namespace for our demo app, and label it for the injectork 
+$ # Create a namespace for the demo app
 $ kubectl create ns appmesh-demo
 $ kubectl label namespace appmesh-demo appmesh.k8s.aws/sidecarInjectorWebhook=enabled
 ```
 
-### Install the App Mesh CRD's
+#### Install the App Mesh CRD's and [controller](https://github.com/aws/aws-app-mesh-controller-for-k8s)
 ```
 $ kubectl apply -f https://raw.githubusercontent.com/aws/eks-charts/master/stable/appmesh-controller/crds/crds.yaml
+$ helm upgrade -i appmesh-controller eks/appmesh-controller --namespace appmesh-system
 ```
 
-### Install the App Mesh CRD controller
-``` bash
-$ helm upgrade -i appmesh-controller eks/appmesh-controller \
---namespace appmesh-system
-```
-
-###  Install the App Mesh admission controller
+####  Install the App Mesh [injector](https://github.com/aws/aws-app-mesh-inject/blob/master/INSTALL.md)
 We are going to use the admissions controller/injector for this part of the tutorial. The injector will add the appropriate
-*App Mesh* envoy container to your pod automatically, including wiring up the networking between the  containers.  The injector is a great help in making App Mesh an easy experience for developers working on Kubernetes/EKS. 
+*App Mesh* init and envoy containers to your pod automatically. It will also wire up the proper networking between the containers.  The injector is a great help in making App Mesh an easy experience for developers working on Kubernetes/EKS. Still, one must add the appropriate annotations and create the various mesh components (i.e. virtual service/routes and nodes) in the appropriate kubernetes yaml format.
 
 ```
 $ helm upgrade -i appmesh-inject eks/appmesh-inject \
 --namespace appmesh-system \
---set mesh.create=false 
+--set mesh.create=false \
+--set mesh.name=appmesh
 ```
  
 #### Override Sidecar Injector Default Behavior
@@ -354,18 +354,42 @@ $ helm upgrade -i appmesh-grafana eks/appmesh-grafana \
 $ helm install --generate-name -n appmesh-demo ./aws-appmesh-demo
 ```
 
-### Verify installed and created pods
+### Verify App Mesh and demo pods
 Our helm chart created five pods in the `appmesh-demo` namespace. Since this namespace is being watched by the App Mesh injector, all pods will be created with an Envoy container. Also, we should see additional components relating to the mesh, i.e. virtual nodes, virtual services and the mesh itself.
 
 Check that they are all installed properly:
 
 ``` bash
-$ kubectl get all -n appmesh-demo
+$ kubectl api-resources --api-group=appmesh.k8s.aws
+NAME              SHORTNAMES   APIGROUP          NAMESPACED   KIND
+meshes                         appmesh.k8s.aws   false        Mesh
+virtualnodes                   appmesh.k8s.aws   true         VirtualNode
+virtualservices                appmesh.k8s.aws   true         VirtualService
 
+$ kubectl -n appmesh-demo get deploy,po,svc,virtualnode.appmesh.k8s.aws,virtualservice.appmesh.k8s.aws
+NAME                                   READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.extensions/load-generator   3/3     3            3           81s
+deployment.extensions/nginx            2/2     2            2           81s
 
+NAME                                  READY   STATUS    RESTARTS   AGE
+pod/load-generator-57ccbfb5ff-25vzc   2/2     Running   1          81s
+pod/load-generator-57ccbfb5ff-4rb5p   2/2     Running   1          81s
+pod/load-generator-57ccbfb5ff-prl47   2/2     Running   1          81s
+pod/nginx-65c6c4788-l8xxb             2/2     Running   0          81s
+pod/nginx-65c6c4788-p85xz             2/2     Running   0          81s
+
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+service/nginx   ClusterIP   10.100.187.228   <none>        80/TCP    81s
+
+NAME                                         AGE
+virtualnode.appmesh.k8s.aws/load-generator   81s
+virtualnode.appmesh.k8s.aws/nginx            81s
+
+NAME                                   AGE
+virtualservice.appmesh.k8s.aws/nginx   81s
 ```
 
-If you do not see `2/2` on the application pods, reflecting the additional envoy proxy, you will need to do some troubleshooting.  Verify that the demo namespace is labeled, and that the appmesh-system namespace has all the components running as expected.
+If you do not see `2/2` in the application pods READY section, you will need to do some troubleshooting.  Verify that the demo namespace is labeled, and that the appmesh-system namespace has all the components running as expected.
 
 1. test
 2. test
@@ -389,6 +413,10 @@ Now, open up a browser window to `localhost:127.0.0.1:3000`. There will be two D
 
 ### Clean up EKS cluster
 ``` bash
+$ kubectl delete ns appmesh-demo && kubectl delete mesh appmesh
+$ kubectl delete namespace appmesh-system; kubectl delete mutatingwebhookconfiguration appmesh-inject
+$ kubectl delete clusterrolebindings appmesh-inject; kubectl delete clusterrole appmesh-inject
+
 $ eksctl delete cluster cluster-appmesh --region us-east-2
 ```
 
