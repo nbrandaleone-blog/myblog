@@ -5,7 +5,7 @@ date:   2019-12-29 08:00:00 -0400
 categories: aws service_mesh
 ---
 
-# **DRAFT** Increased visibilty via App Mesh
+# Increased visibilty via App Mesh
 ![envoy stats](/images/envoy-stats.png)
 <!--
     this is a an html comment. It works for Jekyl, but not for other tools, such as MacDown or Pandoc.
@@ -270,7 +270,7 @@ It is worth noting that there are many commercial monitoring options as well. So
 The demo is a very simple, self-contained application consisting of two nginx pods, and three traffic generating pods.
 The purpose of the application is simply to generate traffic that the envoy proxies can report upon.
 
-*Add diagram*
+![prometheus scraping](/images/prometheus-scraping.png)
 
 ### Create a cluster
 Let's create an EKS cluster to work with. I am using the `us-east-2` region this time, in order to spread out my resources. 
