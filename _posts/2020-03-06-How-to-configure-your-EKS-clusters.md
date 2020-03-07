@@ -702,6 +702,7 @@ Of course, this is just a baseline to get ones cluster up and productive. For on
 * [Setting  up your Kubernetes cluster with Helmfile](https://itnext.io/setup-your-kubernetes-cluster-with-helmfile-809828bc0a9f)
 * [CDK and EKS module](https://docs.aws.amazon.com/cdk/api/latest/docs/aws-eks-readme.html)
 * [CDK8s - Creating K8 templates using higher level languages](https://github.com/awslabs/cdk8s)
+* [Using CloudFormation and Helm Charts](https://aws.amazon.com/blogs/infrastructure-and-automation/using-aws-cloudformation-to-deploy-software-into-amazon-eks-clusters/?nc1=b_rp)
 * [Weaveworks gitops with eksctl](https://eksctl.io/usage/experimental/gitops-flux/)
 * [GitOps Helm workshop](https://helm.workshop.flagger.dev/intro/)
 * [EKS and GitOps workshop](https://eks.handson.flagger.dev/)
