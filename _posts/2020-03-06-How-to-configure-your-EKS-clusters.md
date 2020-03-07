@@ -27,7 +27,7 @@ Now, the question is: **How** do we quickly and easily install these, and other 
 
 ## Option 1 - BASH scripts
 
-Let's not fool ourselves, we can go a long way using BASH scripts. Fortunately, there is a [project](https://github.com/mreferre/ekstender) called **ekstender** which uses Docker to install some tooling, and a BASH script to install or uninstall various packages onto your cluster.  You can customize the install process by toggling environmental variables, or of course by modifying the installation script.
+Let's not fool ourselves, we can go a long way using BASH scripts. Fortunately, there is a [project](https://github.com/mreferre/ekstender) called **ekstender** which uses a BASH script to install or uninstall various packages onto your cluster.  You can customize the install process by toggling environmental variables, or of course by modifying the installation script.
 
 ### ekstender example
 
