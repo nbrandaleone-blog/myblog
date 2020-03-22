@@ -72,9 +72,9 @@ PLATFORMS
 DEPENDENCIES
   jekyll (~> 4.0)
   jekyll-archives
-  jekyll-feed (~> 0.6)
+  jekyll-feed
   jekyll-paginate
-  minima (~> 2.0)
+  minima
   tzinfo-data
 
 BUNDLED WITH
