@@ -206,6 +206,7 @@ Bottlerocket is in Preview, and should **not** be used for production workloads 
 ### References
 
 * [Bottlerocket blog post](https://aws.amazon.com/blogs/aws/bottlerocket-open-source-os-for-container-hosting/)
+* [Bottlerocket Engineering Considerations](https://aws.amazon.com/blogs/containers/bottlerocket-a-special-purpose-container-operating-system/)
 * [Bottlerocket FAQ](https://aws.amazon.com/bottlerocket/faqs/)
 * [Bottlerocket Github Repo](https://github.com/bottlerocket-os/bottlerocket)
 * [Bottlerocket Quickstart](https://github.com/bottlerocket-os/bottlerocket/blob/develop/QUICKSTART.md)
