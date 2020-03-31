@@ -10,8 +10,8 @@ categories: kubernetes
 
 Bottlerocket is a free and open-source Linux-based operating system meant for hosting containers. Bottlerocket focuses on security and maintainability, providing a reliable, consistent, and safe platform for container-based workloads. 
 
-### *Translation*
-In other words, Bottlerocket is meant as a replacement for customers currently running *CoreOS Container Linux*, which will reach its end of life on May 26, 2020. There is an open-source fork of CoreOS, knows as **flatcar**. Flatcar has its own [website](https://www.flatcar-linux.org), and the project is being supported by [Kinvolk](https://kinvolk.io).
+### Alternatives
+Bottlerocket is somewhat unique in the container ecosystem. It is not quite a microVM like [firecracker](https://aws.amazon.com/blogs/aws/firecracker-lightweight-virtualization-for-serverless-computing/), but it is signficantly different than a typical Linux distro. Bottlerocket may be considered as a replacement for customers currently running *CoreOS Container Linux*, which will reach its end of life on May 26, 2020. There is also an open-source fork of CoreOS, knows as **flatcar**. Flatcar has its own [website](https://www.flatcar-linux.org), and the project is being supported by [Kinvolk](https://kinvolk.io).
 
 ## Philosophy behind Bottlerocket
 The base operating system has just what you need to run containers reliably, and is built with standard open-source components. Bottlerocket-specific additions focus on reliable updates and on the API. Instead of making configuration changes manually, you can change settings with an API call, and these changes are automatically migrated through updates.
@@ -99,6 +99,17 @@ amazon-k8s-cni:v1.6.0
 ## Test, test, test
 I ran many basic workloads (i.e. nginx, redis, small web-servers), and I did not run into any issues at all.  Kubernets/EKS talked to the nodes without a problem.
 
+### Verifying the worker nodes are running Bottlerocket
+
+```shell
+$ kubectl get nodes -o wide
+NAME                                          STATUS   ROLES    AGE     VERSION    INTERNAL-IP     EXTERNAL-IP      OS-IMAGE                KERNEL-VERSION   CONTAINER-RUNTIME
+ip-172-31-22-96.us-west-2.compute.internal    Ready    <none>   4h36m   v1.15.10   172.31.22.96    34.222.151.220   Bottlerocket OS 0.3.1   5.4.16           containerd://1.3.3+unknown
+ip-172-31-26-118.us-west-2.compute.internal   Ready    <none>   4h36m   v1.15.10   172.31.26.118   34.222.122.20    Bottlerocket OS 0.3.1   5.4.16           containerd://1.3.3+unknown
+ip-172-31-3-151.us-west-2.compute.internal    Ready    <none>   4h36m   v1.15.10   172.31.3.151    34.211.122.61    Bottlerocket OS 0.3.1   5.4.16           containerd://1.3.3+unknown
+ip-172-31-4-202.us-west-2.compute.internal    Ready    <none>   4h36m   v1.15.10   172.31.4.202    54.149.42.253    Bottlerocket OS 0.3.1   5.4.16           containerd://1.3.3+unknown
+```
+
 Here is snapshot of my Bottlerocket cluster, using one of my favorite tools, `kube-ops-view`, by [Henning Jacobs](https://github.com/hjacobs/kube-ops-view) of [Zalando](https://zalando.com). The documentation is [here](https://kubernetes-operational-view.readthedocs.io/en/latest/).
 
 ![dashboard of running pods](/images/kov.png)
@@ -182,7 +193,7 @@ What is interesting, is that neither the control or admin containers show up in 
 Since it is not possible to update packages, Bottlerocket has a tool to assist with the potentially frequent updates of the OS. Fortunately, there is an `operator` for EKS/Kubernetes.  Information on the tool can be found in its Github [repo](https://github.com/bottlerocket-os/bottlerocket-update-operator). I have not used it, so I can't address its benefits or drawbacks.  For now, I think that I will simply update the node groups, like any other kubernetes worker nodes. Perhaps AWS will make Bottlerocket a possible default image for the **managed worker node** feature?!
 
 ### Summary
-I quickly explored setting up an EKS cluster using Bottlerocket as the container OS for the worker nodes.  Bottlerocket is a highly secure container OS, with minimal size and attack surface.  It is similar in philosophy to the defunct CoreOS project.
+I quickly explored setting up an EKS cluster using Bottlerocket as the container OS for the worker nodes.  Bottlerocket is a highly secure container OS, with minimal size and attack surface.  
 
 Bottlerocket is in Preview, and should **not** be used for production workloads yet.  It is available in the following regions:
 * us-east-1
@@ -200,3 +211,4 @@ Bottlerocket is in Preview, and should **not** be used for production workloads 
 * [Bottlerocket Quickstart](https://github.com/bottlerocket-os/bottlerocket/blob/develop/QUICKSTART.md)
 * [Bottlerocket Roadmap](https://github.com/orgs/bottlerocket-os/projects/1)
 * [Sample EKSCTL config](https://github.com/weaveworks/eksctl/blob/master/examples/20-bottlerocket.yaml)
+* [Weaveworks GitOps with Bottlerockets](https://www.weave.works/blog/bottlerocket-with-fork-clone-run)
