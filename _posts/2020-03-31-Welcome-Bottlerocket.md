@@ -211,4 +211,4 @@ Bottlerocket is in Preview, and should **not** be used for production workloads 
 * [Bottlerocket Quickstart](https://github.com/bottlerocket-os/bottlerocket/blob/develop/QUICKSTART.md)
 * [Bottlerocket Roadmap](https://github.com/orgs/bottlerocket-os/projects/1)
 * [Sample EKSCTL config](https://github.com/weaveworks/eksctl/blob/master/examples/20-bottlerocket.yaml)
-* [Weaveworks GitOps with Bottlerockets](https://www.weave.works/blog/bottlerocket-with-fork-clone-run)
+* [Weaveworks GitOps with Bottlerocket](https://www.weave.works/blog/bottlerocket-with-fork-clone-run)
