@@ -182,7 +182,7 @@ What is interesting, is that neither the control or admin containers show up in 
 Since it is not possible to update packages, Bottlerocket has a tool to assist with the potentially frequent updates of the OS. Fortunately, there is an `operator` for EKS/Kubernetes.  Information on the tool can be found in its Github [repo](https://github.com/bottlerocket-os/bottlerocket-update-operator). I have not used it, so I can't address its benefits or drawbacks.  For now, I think that I will simply update the node groups, like any other kubernetes worker nodes. Perhaps AWS will make Bottlerocket a possible default image for the **managed worker node** feature?!
 
 ### Summary
-I quickly explored setting up an EKS cluster using Bottlerocket as the container OS for the worker nodes.  Bottlerocket is a highly secure container OS, with minimal size and attack surface.  It is similar in philosophy to the defunt CoreOS project.
+I quickly explored setting up an EKS cluster using Bottlerocket as the container OS for the worker nodes.  Bottlerocket is a highly secure container OS, with minimal size and attack surface.  It is similar in philosophy to the defunct CoreOS project.
 
 Bottlerocket is in Preview, and should **not** be used for production workloads yet.  It is available in the following regions:
 * us-east-1
