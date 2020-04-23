@@ -38,6 +38,10 @@ $ aws ecs describe-clusters --cluster FargateCluster | jq -r '.clusters[0].capac
 
 Now, let's launch a sample task.  I have already created a task definition, and a security group (which allows HTTP traffic). The same concept applies for launching an ECS service.
 
+Notice that I am simply using one Capacity Provider (FARGATE_SPOT), and it has a weight of 1.  However, it is possible to utilize both Capacity Providers, and to mix the weights along with an optional *base* argument. This allow for great flexibility when it comes to mixing FARGATE and FARGATE_SPOT providers which allows for safety if our Spot fleet is reclaimed.
+
+The syntax for the `capacityProvider` argument is: `capacityProvider=string,weight=integer,base=integer ...`.
+
 ``` sh
 aws ecs run-task \
      --capacity-provider-strategy capacityProvider=FARGATE_SPOT,weight=1 \
@@ -91,7 +95,7 @@ $ curl 34.222.210.104
 </html>
 ```
 
-Now, let's clean up our running task.
+Now, let's clean up our running task. Spot may be inexpensive - but it not free.
 
 ``` sh
 aws ecs stop-task --cluster FargateCluster --task 9db04bcd-89ec-4671-bd93-a10628a560e0
@@ -100,10 +104,12 @@ aws ecs stop-task --cluster FargateCluster --task 9db04bcd-89ec-4671-bd93-a10628
 ### Running Fargate on Spot using CDK
 
 Now, I would like to show you how to use CDK to launch Fargate tasks.
-Unfortunately, it is still an open [issue](https://github.com/aws/aws-cdk/issues/5850).
+Unfortunately, it is still an open [issue](https://github.com/aws/aws-cdk/issues/5850), since Capacity Providers are not yet supported in CloudFormation.
 
-### Using Fargate Spot with Auto Scaling Groups
-In order to keep this post small, I will not demonstrate how to do this, but just point you to the [documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-auto-scaling.html#asg-capacity-providers). It is very similar to what we did above, except that one must create a Capacity Provider and associate with it an Auto Scaling Group.
+### Using Fargate Spot with EC2 Auto Scaling Groups
+While the focus of this post is on Fargate, many customers still use EC2 nodes to host their containers.  These nodes are often managed by an Auto Scaling Group. It is possilbe to use Capacity Providers with ASG.
+
+In order to keep this post small, I will not demonstrate how to do this, but just point you to the [documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-auto-scaling.html#asg-capacity-providers). It is very similar to what we did above, except that one must create a Capacity Provider and associate it with an previously created Auto Scaling Group.
 
 ``` sh
 aws ecs create-capacity-provider \
