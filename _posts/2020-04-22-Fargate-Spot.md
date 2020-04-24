@@ -10,7 +10,7 @@ categories: ecs
 
 With all the economic slowdown in response to the COVID-19 outbreak, I thought I would do a short blog post on how to run containers as inexpensively as possible.  That is of course done using [Spot](https://aws.amazon.com/blogs/aws/aws-fargate-spot-now-generally-available/).
 
-Spot instances are unused capacity that AWS offers at huge discounts from on-demand prices, typically in the 70-90% discount range.  Of course, this does come with a caveat - AWS will reclaim the instances if someone is willing to pay the on-demand price.  So, while I do know of many companies who run production work-loads **entirely** on Spot, I generally do not recommend such a strategy. While a huge cost-saver, it also implies you may lose your entire fleet at once. It is a wiser strategy to run some of your _base_ capacity using on-demand (or RI, now known as [Savings Plan](https://aws.amazon.com/savingsplans/)), and your _burst_ capacity on Spot.  This way you always have some compute available if the Spot 2-minute warning comes your way.
+Spot instances are unused capacity that AWS offers at huge discounts from on-demand prices, typically in the 70-90% discount range.  Of course, this does come with a caveat - AWS will reclaim the instances if someone is willing to pay the on-demand price.  So, while I do know of many companies who run production workloads **entirely** on Spot, I generally do not recommend such a strategy. While a huge cost-saver, it also implies you may lose your entire fleet at once. It is a wiser strategy to run some of your _base_ capacity using on-demand (or RI, now known as [Savings Plan](https://aws.amazon.com/savingsplans/)), and your _burst_ capacity on Spot.  This way you always have some compute available if the Spot 2-minute warning comes your way.
 
 ### Using the AWS CLI
 I will show you how to launch Fargate tasks using the AWS CLIs.
@@ -95,7 +95,7 @@ $ curl 34.222.210.104
 </html>
 ```
 
-Now, let's clean up our running task. Spot may be inexpensive - but it not free.
+Now, let's clean up our running task. Spot may be inexpensive - but it is not free.
 
 ``` sh
 aws ecs stop-task --cluster FargateCluster --task 9db04bcd-89ec-4671-bd93-a10628a560e0
@@ -109,7 +109,7 @@ Unfortunately, it is still an open [issue](https://github.com/aws/aws-cdk/issues
 ### Using Fargate Spot with EC2 Auto Scaling Groups
 While the focus of this post is on Fargate, many customers still use EC2 nodes to host their containers.  These nodes are often managed by an Auto Scaling Group. It is possilbe to use Capacity Providers with ASG.
 
-In order to keep this post small, I will not demonstrate how to do this, but just point you to the [documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-auto-scaling.html#asg-capacity-providers). It is very similar to what we did above, except that one must create a Capacity Provider and associate it with an previously created Auto Scaling Group.
+In order to keep this post small, I will not demonstrate how to do this, but just point you to the [documentation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-auto-scaling.html#asg-capacity-providers). It is very similar to what we did above, except that one must create a Capacity Provider and associate it with a previously created Auto Scaling Group.
 
 ``` sh
 aws ecs create-capacity-provider \
