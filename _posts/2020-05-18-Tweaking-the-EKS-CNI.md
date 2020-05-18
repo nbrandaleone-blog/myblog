@@ -65,7 +65,7 @@ daemon set "aws-node" successfully rolled out
 > "In any team you need a tank, a healer, a damage dealer, someone with crowd control abilities, and another who knows iptables"
 -- Jerome Petazzoni, on Twitter
 
-I can confirm this by viewing the IP Tables on my worker nodes. When the default setting is on, this is what it looks like:
+I can confirm this by viewing the IP Tables on my worker nodes. When the default setting is off, this is what it looks like:
 
 ``` sh
 # iptables -t nat -S AWS-SNAT-CHAIN-0
