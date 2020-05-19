@@ -2,6 +2,7 @@
 layout: post
 title:  "Tweaking the CNI on EKS"
 date:   2020-05-18 08:00:00 -0400
+comments: true
 categories: eks
 ---
 ![cni logo](/images/cni-logo.png)
