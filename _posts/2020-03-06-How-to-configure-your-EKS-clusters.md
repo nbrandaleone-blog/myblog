@@ -2,6 +2,7 @@
 layout: post
 title:  "How to configure your EKS cluster"
 date:   2020-03-06 08:00:00 -0400
+comments: true
 categories: kubernetes
 ---
 # Four ways to configure an EKS cluster

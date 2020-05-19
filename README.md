@@ -1,6 +1,7 @@
 # [blog](https://nickaws.net/index.html)
 This repo holds my blog, powered by Jekyll.
 
+## Building and deploying the static Jekyll website
 1) To run a local web server:
 	 $ bundle exec jekyll serve
   
@@ -12,7 +13,7 @@ This repo holds my blog, powered by Jekyll.
 	 $ JEKYLL_ENV=production bundle exec jekyll build
 
 3) To push to production
-	 # see rake/Rakefile
+	 See rake/Rakefile
 	 $ rake deploy
 
 4) To create new page. Go into \_posts.
@@ -22,7 +23,7 @@ This repo holds my blog, powered by Jekyll.
    $ bundle exec jekyll build --drafts
    $ bundle exec jekyll serve --drafts
 
-# Git commands
+## Git commands
 git commit -a -m "comment"
 git push origin master
 git pull

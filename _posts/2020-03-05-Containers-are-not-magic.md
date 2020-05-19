@@ -2,6 +2,7 @@
 layout: post
 title:  "Containers are not magic"
 date:   2020-03-05 08:00:00 -0400
+comments: true
 categories: linux
 ---
 # Containers are not magic

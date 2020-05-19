@@ -2,6 +2,7 @@
 layout: post
 title:  "Welcome Bottlerocket!"
 date:   2020-03-31 08:00:00 -0400
+comments: true
 categories: kubernetes
 ---
 ![Bottlerocket logo](/images/bottlerocket.jpg)

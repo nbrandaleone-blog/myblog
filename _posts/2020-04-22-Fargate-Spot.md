@@ -2,6 +2,7 @@
 layout: post
 title:  "Run Fargate on Spot"
 date:   2020-04-22 08:00:00 -0400
+comments: true
 categories: ecs
 ---
 ![fargate logo](/images/fargate-logo.png)

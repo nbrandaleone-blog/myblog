@@ -2,6 +2,7 @@
 layout: post
 title:  "Running K8s on ARM"
 date:   2020-03-21 08:00:00 -0400
+comments: true
 categories: kubernetes
 ---
 ![graviton performance](/images/aws-graviton-spec-3.png)
