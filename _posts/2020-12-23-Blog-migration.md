@@ -17,7 +17,7 @@ I am very excited about this opportunity, and it offers me a chance to re-boot t
 
 So, please head over to my new [site](https://nicks-playground.net)
 
-This current site _https://nickaws.net_, will no longer receive new content. However, I will slowly shift all my existing content and posts to the new blog shortly.  Nothing will be lost.
+This current site (_https://nickaws.net_), will no longer receive new content. However, I will slowly shift all my existing content and posts to the new blog shortly.  Nothing will be lost.
 
-HAPPY HOLIDAYS to everyone.  May 2021 be a better year for everyone!
+**Happ Holidays** to everyone.  May 2021 be a better year for everyone!
 
